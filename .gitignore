@@ -1,0 +1,51 @@
+# Dependencies and generated builds
+node_modules/
+/dist/
+/standalone/
+/.vite/
+/.cache/
+/.npm/
+/.npm-cache/
+*.tsbuildinfo
+
+# Local environment and credentials (keep safe templates)
+.env
+.env.*
+!.env.example
+!.env.*.example
+!.env.template
+!.env.*.template
+.npmrc
+.netrc
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Logs and test reports
+*.log
+/coverage/
+/playwright-report/
+/test-results/
+/blob-report/
+
+# Local editor and operating-system files
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.code-workspace
+.DS_Store
+Thumbs.db
+Desktop.ini
+desktop.ini
+*.swp
+*.swo
+*~
+*.tmp
+
+# MATLAB autosaves and generated code (keep .m, .slx, .mat and .fig sources)
+*.asv
+*.slxc
+slprj/
+*_ert_rtw/
+*_grt_rtw/

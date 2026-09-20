@@ -1,0 +1,109 @@
+# TiltLab 可倾转四旋翼无人机仿真演示网站
+
+这是 Vue 3 + Vite + Element Plus + ECharts + Three.js 网站。支持 MATLAB 结果回放，以及按狭缝宽度和目标悬停高度计算的新参数化飞行模块。新模块进行浏览器几何与运动学规划，不运行 MATLAB 闭环模型，不控制实际无人机。详细参数、计算方法和使用示例见 `README-planner.md`。
+
+## 直接打开
+
+已收到 `TiltLab-离线演示.html` 时，可用新版 Chrome 或 Edge 直接打开，无需安装 MATLAB、Python 或 npm，也无需联网。该文件为构建产物，不提交到源码仓库；从 GitHub 下载源码后，请按下文安装依赖并运行，或构建独立离线版。需要浏览器启用 WebGL；不支持时仍可查看曲线和数据。
+
+文件包含真实实验曲线和数据来源说明。原图中部分位置曲线有异常，因此默认位置轨迹由参考轨迹与保存的跟踪误差重建。详细处理见本项目 `README-data.md` 和页面“数据说明”。不要将此版本描述为重新完成的仿真验证或实机测试。
+
+## 开发与运行
+
+要求 Node.js 20.19+ 或 22.12+，建议使用支持的 LTS 版本。
+
+```powershell
+npm install
+npm run dev
+```
+
+打开终端输出的本地地址。开发服务器默认只监听 `127.0.0.1`。
+
+```powershell
+npm test
+npm run build
+npm start
+```
+
+构建后 `npm start` 提供 `http://127.0.0.1:4173`。`dist/` 可部署到静态网站服务；不需要服务器侧 MATLAB。
+
+生成独立离线版：
+
+```powershell
+npm run build:standalone
+```
+
+结果在 `standalone/index.html`，可重命名后单独复制。它内置依赖及默认数据；不从 CDN 加载代码。
+
+## 使用
+
+- 实验工作台：参数设置与实验回放合并在同一页面，顶部“当前记录”切换配套实验和生成方案；保留三维飞行、姿态读数、时间轴、播放速度和循环播放。
+- 参数化飞行：输入狭缝净宽、最终悬停高度，自动选择倾角并生成规划；可设置倾转上限、每侧间隙和速度，过窄时拒绝生成。
+- 视图操作：鼠标拖动旋转、滚轮缩放；透视、俯视和侧视；重新取景与专注模式。
+- 任务阶段：默认记录显示参考计划，点击阶段可跳转；它表示任务时间安排，不是自动识别到的飞行状态。
+- 数据分析：位置跟踪、姿态与倾转、位置误差、旋翼转速；点击曲线定位时间，导出 CSV。
+- 实验记录：切换本次会话导入的记录。刷新会清除导入记录，内置数据仍保留；必要时先导出 JSON。
+- 键盘：空格播放/暂停，左右箭头前后 1 秒，Esc 退出专注模式。输入控件操作时不触发这些快捷键。
+
+## MATLAB 数据
+
+使用 `matlab/export_demo_data.m` 导出结果，详细调用见该函数注释及 `README-data.md`。导入格式：
+
+```json
+{
+  "schemaVersion": 1,
+  "metadata": {
+    "title": "我的倾转实验",
+    "source": "MATLAB / Simulink",
+    "kind": "recorded",
+    "angleUnit": "rad",
+    "positionUnit": "m"
+  },
+  "samples": [
+    {"t":0,"x":1,"y":0,"z":0,"roll":0,"pitch":0,"yaw":0,"tilt":0},
+    {"t":1,"x":1,"y":0,"z":1,"roll":0,"pitch":0,"yaw":0,"tilt":0}
+  ]
+}
+```
+
+必填字段：`t,x,y,z,roll,pitch,yaw,tilt`，都必须为有限数值。时间以秒为单位、严格递增，可从非零时间开始。角度必须统一使用 `rad` 或 `deg`，在 metadata 中声明。导入时统一为弧度，页面以度显示，CSV/JSON 以弧度导出。
+
+参考轨迹 `refX,refY,refZ` 可选；若提供，必须所有采样点三字段完整。`u1..u4,w1..w4` 可选，每个提供的通道必须完整。缺少参考轨迹时不显示误差指标。最多 100,000 点、35 MB。
+
+## 物理与指标约定
+
+世界坐标 Z 向上。姿态为 `Rz(yaw) Ry(pitch) Rx(roll)`，对应标准滚转/俯仰/偏航。机架沿局部 Y 轴倾转，旋翼反向补偿。机体沿用源程序基础米制尺寸，外观和桨叶转速仍是展示示意。参数化模式检查机体几何包络和通道净距，但不模拟空气动力、执行器和实际飞行碰撞；它不构成实机验证。
+
+当前误差为三轴位置误差的欧氏范数。全程 RMSE 为误差平方按时间梯形积分，再除以总时长并开方，包含起飞初始误差。回放线性插值位置，姿态角以最短角差插值；极端姿态或高速旋转需按项目需求换用四元数和更严格的姿态处理。
+
+## 项目结构
+
+```text
+src/App.vue                    页面、回放与交互
+src/style.css                  桌面与移动端样式
+src/components/DroneScene.vue   Three.js 三维场景
+src/components/FlightChart.vue  ECharts 同步曲线
+src/lib/data.js                 数据验证、插值、统计与导出
+src/lib/droneModel.js           米制机体几何、倾转变换与旋翼包络
+src/lib/planner.js              几何倾角计算与运动学航迹生成
+src/components/PlannerPanel.vue 参数输入与计算结果
+public/data/recorded.json       默认实验记录与来源信息
+matlab/export_demo_data.m       MATLAB 导出接口
+tests/data.test.mjs             数据处理行为测试
+tests/clearance.test.mjs        狭缝净宽与完整机体通过检查
+tests/planner.test.mjs          参数化规划与航迹检查
+tests/scene-data.test.mjs       场景与阶段元数据导入校验
+server.mjs                     本地静态服务器
+```
+
+参数化模式已能在浏览器中按输入重新计算。若要运行论文控制器的闭环动力学仿真，可增加 FastAPI + MATLAB Engine 后端，将几何规划作为目标轨迹输入；应先独立验证 Simulink 模型、输出变量及控制器切换，再接入页面。
+
+## 交付验证
+
+- 37 项测试通过，覆盖数据、机体几何、参数规划与场景元数据；穿越检查包含完整旋翼扫掠和密集插值帧。
+- 标准网站与单文件离线版均构建通过。
+- Chrome 桌面 1440px 与手机 390px 视口检查通过，无页面脚本异常及横向溢出。
+- 浏览器实测播放/暂停、阶段跳转、视角、曲线点击定位、数据分析、记录切换、JSON/CSV 导出。
+- 实测拒绝无效 JSON 数据；验证非零起始时间、角度转换、缺少参考轨迹及旋翼数据的空状态。
+- 离线 HTML 在断网浏览器环境直接打开，三维与曲线可用，无外部网络请求。
+- MATLAB 导出函数完成代码核查，尚未实际运行验证；未重新运行原 Simulink 模型。
