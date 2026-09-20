@@ -27,7 +27,7 @@ function withModel(value, callback) {
   try { callback(rig) } finally { dispose(rig) }
 }
 
-test('default inspector dimensions retain the flight model geometry exactly', () => {
+test('default dimension conversion preserves the unchanged flight model geometry exactly', () => {
   assert.deepEqual(inspectionDimensions(DEFAULT_INSPECTION), DRONE_DIMENSIONS)
   const original = createDroneModel(), explicit = createDroneModel(inspectionDimensions(DEFAULT_INSPECTION))
   const shape = rig => {
@@ -183,5 +183,8 @@ test('rotors cannot touch or overlap their neighbours in a neutral frame', () =>
     assert.equal(result.ok, false)
     assert.match(result.error, /旋翼直径/)
   }
-  assert.equal(validateInspection({ ...neutral, rotorDiameter: 157.9 }).ok, true)
+  assert.equal(validateInspection({ ...neutral, rotorDiameter: 157.9 }).ok, false)
+  assert.equal(validateInspection({ ...neutral, spanY: 220, rotorDiameter: 157 }).ok, true)
+  assert.equal(validateInspection({ ...neutral, rotorDiameter: 136 }).ok, true)
+  assert.equal(validateInspection({ ...neutral, rotorDiameter: 136.001 }).ok, false)
 })

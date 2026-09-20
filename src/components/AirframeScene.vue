@@ -2,7 +2,8 @@
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
-import { createDroneModel, sweptAircraftBounds } from '../lib/droneModel.js'
+import { sweptAircraftBounds } from '../lib/droneModel.js'
+import { createInspectionModel } from '../lib/inspectionModel.js'
 import { applyInspectionPose, inspectionDimensions } from '../lib/inspection.js'
 
 const props = defineProps({
@@ -43,7 +44,7 @@ function measureRadius() {
   // so an arbitrary body attitude cannot rotate the aircraft out of the frame.
   const bounds = new THREE.Box3(), corner = new THREE.Vector3()
   fitRadius = 0
-  const betas = new Set([0, 15, 30, 45, 60, 75, props.state.beta])
+  const betas = new Set([-90, -75, -60, -45, -30, -15, 0, 15, 30, 45, 60, 75, 90, props.state.beta])
   for (const beta of betas) {
     applyInspectionPose(rig, { ...props.state, beta, roll: 0, pitch: 0, yaw: 0 })
     sweptAircraftBounds(rig, bounds)
@@ -65,7 +66,7 @@ function updateAircraft() {
   const nextKey = JSON.stringify(dimensions)
   if (!rig || dimensionsKey !== nextKey) {
     disposeObject(rig?.drone)
-    rig = createDroneModel(dimensions)
+    rig = createInspectionModel(dimensions)
     dimensionsKey = nextKey
     scene.add(rig.drone)
     measureRadius()

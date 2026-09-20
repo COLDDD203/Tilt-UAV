@@ -71,7 +71,7 @@ function reset() {
       <section class="panel inspection-controls">
         <div class="inspection-control-heading"><h2><SlidersHorizontal :size="16"/>姿态参数</h2><button class="inspection-reset" @click="reset"><RotateCcw :size="12"/>恢复默认</button></div>
         <div class="inspection-presets" aria-label="机体姿态预设">
-          <button @click="preset(0)">水平姿态</button><button @click="preset(30)">右倾 30°</button><button @click="preset(60)">右倾 60°</button>
+          <button @click="preset(0)">水平姿态</button><button @click="preset(30)">右倾 30°</button><button @click="preset(60)">右倾 60°</button><button @click="preset(90)">右倾 90°</button>
         </div>
         <form novalidate @submit.prevent="applyState" @input="error = ''">
           <div class="inspection-angle-fields">
@@ -88,11 +88,12 @@ function reset() {
                 <div class="inspection-number inspection-small-number"><input :id="`inspection-${dimension.key}`" v-model.number="draft[dimension.key]" :aria-label="dimension.label" type="number" inputmode="decimal" :min="limits(dimension.key)[0]" :max="limits(dimension.key)[1]" step="any" required/><span>mm</span></div>
               </div>
             </div>
+            <p class="inspection-dimension-note">桨径须比左右中心距小至少 1 mm，比前后中心距小至少 40 mm，为中央机架留出空间。</p>
           </details>
           <button type="submit" class="inspection-apply"><Check :size="16"/>应用姿态</button>
           <p v-if="error" class="inspection-error" role="alert"><CircleAlert :size="14"/><span>{{ error }}</span></p>
           <p v-else-if="dirty" class="inspection-pending" role="status">参数已修改，应用后更新模型。</p>
-          <p v-else class="inspection-input-hint">β ±75° · 滚转 / 偏航 ±180° · 俯仰 ±90°</p>
+          <p v-else class="inspection-input-hint">β ±90° · 滚转 / 偏航 ±180° · 俯仰 ±90°</p>
         </form>
       </section>
 
@@ -103,7 +104,7 @@ function reset() {
         </div>
         <p>包含桨叶完整旋转范围</p>
       </section>
-      <div class="inspection-note"><span class="inspection-note-symbol">β</span><p>β 改变机架倾角，旋翼反向补偿；滚转、俯仰和偏航改变整机姿态。</p></div>
+      <div class="inspection-note"><span class="inspection-note-symbol">β</span><p>β 改变中央机架倾角，两侧机臂与 IMU 同步补偿；其余角度改变整机姿态。</p></div>
     </div>
   </section>
 </template>
@@ -156,6 +157,7 @@ function reset() {
 .inspection-dimensions summary small { color: #a5aa9d; font-size: 9px; margin-left: 6px; }
 .inspection-dimensions[open] summary > svg { transform: rotate(180deg); }
 .inspection-dimension-fields { display: grid; gap: 12px; padding-bottom: 18px; }
+.inspection-dimension-note { margin: -4px 0 16px; color: #929986; font-size: 9px; line-height: 1.7; }
 .inspection-dimension-fields label { flex-direction: row; justify-content: space-between; align-items: baseline; gap: 5px; }
 .inspection-small-number { height: 39px; border-radius: 11px; }
 .inspection-small-number input { font-size: 18px; letter-spacing: 0; }

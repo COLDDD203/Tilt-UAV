@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { DRONE_DIMENSIONS } from './droneModel.js'
+import { validateInspectionRotorSpacing } from './inspectionClearance.js'
 
 // Angles are degrees. Span X/Y are opposing motor-centre distances in mm,
 // not the full swept width/length; rotorDiameter is the full disc diameter.
@@ -14,7 +15,7 @@ export const DEFAULT_INSPECTION = Object.freeze({
 })
 
 export const INSPECTION_LIMITS = Object.freeze({
-  beta: Object.freeze([-75, 75]),
+  beta: Object.freeze([-90, 90]),
   roll: Object.freeze([-180, 180]),
   pitch: Object.freeze([-90, 90]),
   yaw: Object.freeze([-180, 180]),
@@ -38,9 +39,8 @@ export function validateInspection(input) {
     }
     value[key] = number
   }
-  if (value.rotorDiameter >= Math.min(value.spanX, value.spanY)) {
-    return { ok: false, error: '旋翼直径需小于左右和前后电机间距，避免旋翼相交' }
-  }
+  const spacingError = validateInspectionRotorSpacing(value)
+  if (spacingError) return { ok: false, error: spacingError }
   return { ok: true, value }
 }
 
@@ -61,12 +61,14 @@ const radians = degrees => degrees * Math.PI / 180
 // and positive yaw turns the nose left around world +Z. Composition is Rz Rx Ry.
 // This intentionally differs from recorded MATLAB Euler field names; the
 // existing applyDronePose and experiment samples retain their original mapping.
-// Beta tilts the frame while each motor compensates by -beta. Whole-aircraft
-// roll/pitch still affect the rotors, so beta and attitude remain independent.
+// Beta tilts the central frame. In the detailed model the two longitudinal
+// motor arms and central IMU turn together by -beta around their short pivots.
+// Whole-aircraft roll/pitch still affect the rotors; beta remains independent.
 export function applyInspectionPose(rig, value) {
   rig.drone.position.set(0, 0, 0)
   orientation.set(radians(value.pitch), radians(value.roll), radians(value.yaw), 'ZXY')
   rig.drone.quaternion.setFromEuler(orientation)
   rig.airframe.rotation.set(0, radians(value.beta), 0)
-  rig.rotorMounts.forEach(mount => { mount.rotation.set(0, -radians(value.beta), 0) })
+  const compensatedGroups = rig.tiltGroups ?? rig.rotorMounts
+  compensatedGroups.forEach(group => { group.rotation.set(0, -radians(value.beta), 0) })
 }

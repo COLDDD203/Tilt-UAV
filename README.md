@@ -79,6 +79,8 @@ npm run build:standalone
 
 独立的“机体姿态”页按机体实际朝向解释手动角度：机头 +Y，右侧 +X，正滚转使右侧降低，正俯仰抬头，正偏航绕 +Z 逆时针。整机旋转组合为 `Rz(yaw) Rx(pitch) Ry(roll)`；β 另作用于机架，旋翼反向补偿。此处的手动角度定义与 MATLAB 原始欧拉字段映射分开，不覆盖原记录或参数化方案。尺寸仅控制示意几何，当前外廓包含完整桨盘范围；不模拟质量、惯量或飞行动力学。
 
+机体近景按提供的结构图使用独立的紧凑 H 型模型：中央双梁沿 X 连接左右两侧机臂，每侧机臂沿 Y 安装前后两个旋翼，通过短转轴和同步带与机架连接。β 使中央机架倾转，两侧机臂及 IMU 同步反向补偿，手动范围为 −90° 至 90°；连接件不会随角度伸缩。中央机架总深度不超过 32 mm，因此前后中心距必须比桨径至少大 40 mm，为完整旋翼扫掠范围留出每侧至少 4 mm 的间隙；左右中心距至少比桨径大 1 mm。另检查侧臂、电机和邻桨的实际网格与完整桨盘关系。整机姿态是共同刚体旋转，不改变内部间隙。原实验工作台使用的米制模型、规划与回放数据保持独立。
+
 当前误差为三轴位置误差的欧氏范数。全程 RMSE 为误差平方按时间梯形积分，再除以总时长并开方，包含起飞初始误差。回放线性插值位置，姿态角以最短角差插值；极端姿态或高速旋转需按项目需求换用四元数和更严格的姿态处理。
 
 ## 项目结构
@@ -95,6 +97,8 @@ src/components/PlannerPanel.vue 参数输入与计算结果
 src/components/AirframeInspector.vue 独立机体姿态页面及尺寸输入
 src/components/AirframeScene.vue  仅机体的三维近景与视角控制
 src/lib/inspection.js           手动姿态定义、尺寸换算与输入校验
+src/lib/inspectionModel.js      紧凑双梁机架、同步倾转机臂与旋翼细节
+src/lib/inspectionClearance.js  全倾角旋翼间隙约束
 public/data/recorded.json       默认实验记录与来源信息
 matlab/export_demo_data.m       MATLAB 导出接口
 tests/data.test.mjs             数据处理行为测试
@@ -102,6 +106,7 @@ tests/clearance.test.mjs        狭缝净宽与完整机体通过检查
 tests/planner.test.mjs          参数化规划与航迹检查
 tests/scene-data.test.mjs       场景与阶段元数据导入校验
 tests/inspection.test.mjs       独立姿态方向、尺寸与旋翼补偿
+tests/inspection-clearance.test.mjs  实际几何的桨叶与机架间隙检查
 server.mjs                     本地静态服务器
 ```
 
