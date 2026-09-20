@@ -72,8 +72,8 @@ async function calculate() {
             <div class="parameter-input"><input id="plan-gap" v-model.number="form.gapWidth" type="number" inputmode="decimal" min="0.12" max="1.2" step="0.001" required aria-label="狭缝净宽" title="两墙内侧的距离"/><span>m</span></div>
           </div>
           <div class="planner-field">
-            <label for="plan-height">最终悬停高度 <small>0.30–5.00 m</small></label>
-            <div class="parameter-input"><input id="plan-height" v-model.number="form.targetHeight" type="number" inputmode="decimal" min="0.3" max="5" step="0.01" required aria-label="最终悬停高度" title="机体中心离地高度"/><span>m</span></div>
+            <label for="plan-height">目标悬停高度 <small>0.30–5.00 m</small></label>
+            <div class="parameter-input"><input id="plan-height" v-model.number="form.targetHeight" type="number" inputmode="decimal" min="0.3" max="5" step="0.01" required aria-label="目标悬停高度" title="机体中心离地高度；悬停 3 秒后自动降落"/><span>m</span></div>
           </div>
           <ElButton type="primary" native-type="submit" :loading="busy" class="calculate-button"><Sparkles v-if="!busy" :size="15"/>{{ busy ? '正在计算' : '计算并演示' }}</ElButton>
         </div>
@@ -99,7 +99,7 @@ async function calculate() {
       </div>
       <p v-if="Math.abs(result.transitHeight - result.targetHeight) > .01" class="height-explanation">以 {{ f(result.transitHeight) }} m 穿越，出通道后调整至 {{ f(result.targetHeight) }} m 悬停。</p>
     </div>
-    <p class="planner-explainer"><Info :size="12"/>几何与运动学演示，非 MATLAB 闭环仿真。</p>
+    <p class="planner-explainer"><Info :size="12"/>悬停 3 秒后自动降落 · 运动学演示，非闭环仿真。</p>
   </section>
 </template>
 

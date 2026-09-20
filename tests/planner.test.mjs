@@ -88,7 +88,7 @@ test('every dense playback pose clears the real wall, floor and full rotating ro
         const pose = sampleAt(dataset.samples, Math.min(tick / 100, summary.duration))
         applyDronePose(rig, pose)
         sweptAircraftBounds(rig, bound)
-        assert.ok(bound.min.z >= 0, `Ground intersection at ${pose.t}`)
+        assert.ok(bound.min.z >= -1e-9, `Ground intersection at ${pose.t}`)
         assert.deepEqual(rig.drone.scale.toArray(), [1, 1, 1], 'Aircraft must never shrink to fit')
         assert.deepEqual(rig.airframe.scale.toArray(), [1, 1, 1])
         if (bound.max.y >= passage.startY && bound.min.y <= passage.endY) {
@@ -119,27 +119,88 @@ test('every dense playback pose clears the real wall, floor and full rotating ro
   t.diagnostic(`${inspected} dense poses checked with the renderer's unscaled model`)
 })
 
-test('final height is exact, stays fixed for three seconds, and high targets are reached after the corridor', () => {
+test('the requested height is held for three seconds before landing, and high targets are reached after the corridor', () => {
   for (const targetHeight of [.3, 1.7, 5]) {
     const { dataset, summary } = mustPlan({ targetHeight })
     const last = dataset.samples.at(-1)
-    assert.equal(last.z, targetHeight)
+    assert.equal(last.z, summary.landingHeight)
     assert.equal(last.tilt, 0)
     assert.equal(last.y, 9)
     assert.equal(summary.targetHeight, targetHeight)
-    const hover = dataset.metadata.stages.at(-1)
-    assert.ok(hover.to - hover.from >= 3)
-    for (const sample of dataset.samples.filter(row => row.t >= hover.from)) {
+    assert.deepEqual(dataset.metadata.scene.hoverTarget, { x: 1, y: 9, z: targetHeight })
+    assert.deepEqual(dataset.metadata.stages.map(stage => stage.name), [
+      '垂直起飞', '通道前倾转', '倾转穿越狭缝', '离开通道后恢复',
+      '调整悬停高度', '稳定悬停', '平稳降落', '着陆完成',
+    ])
+    const hover = dataset.metadata.stages.find(stage => stage.name === '稳定悬停')
+    const descent = dataset.metadata.stages.find(stage => stage.name === '平稳降落')
+    closeTo(hover.to - hover.from, 3, 1e-8)
+    assert.equal(descent.from, hover.to)
+    for (const sample of dataset.samples.filter(row => row.t >= hover.from && row.t <= hover.to)) {
       assert.equal(sample.z, targetHeight)
       assert.equal(sample.y, 9)
       assert.equal(sample.tilt, 0)
     }
+    assert.equal(sampleAt(dataset.samples, descent.from).z, targetHeight)
+    assert.ok(sampleAt(dataset.samples, (descent.from + descent.to) / 2).z < targetHeight)
     if (targetHeight === 5) {
       assert.ok(summary.transitHeight < 2.5)
       assert.ok(dataset.samples.filter(row => row.y >= 1 && row.y <= 8).every(row => row.z < 2.5))
       assert.ok(dataset.samples.filter(row => row.z >= 2.5).every(row => row.y === 9))
     }
   }
+})
+
+test('landing is level, monotone and speed limited, touches the floor without clipping and remains stationary', () => {
+  withModel(rig => {
+    for (const parameters of [{ targetHeight: .3, speed: .1 }, DEFAULT_PLAN_PARAMS, { targetHeight: 5, speed: 1.5 }]) {
+      const { dataset, summary } = mustPlan(parameters)
+      const descent = dataset.metadata.stages.find(stage => stage.name === '平稳降落')
+      const landed = dataset.metadata.stages.at(-1)
+      const landingSamples = dataset.samples.filter(sample => sample.t >= descent.from && sample.t <= descent.to)
+      const allowedSpeed = Math.min(parameters.speed, .4)
+      assert.equal(summary.landingSpeed, allowedSpeed)
+      assert.equal(landed.from, descent.to)
+      assert.equal(landed.to, summary.duration)
+      closeTo(landed.to - landed.from, 1.5, 1e-8)
+      closeTo(dataset.samples[0].z - summary.landingHeight, .004)
+
+      let peakSpeed = 0
+      const descentSpeeds = []
+      landingSamples.forEach((sample, index) => {
+        assert.equal(sample.x, 1)
+        assert.equal(sample.y, 9)
+        assert.equal(sample.roll, 0)
+        assert.equal(sample.pitch, 0)
+        assert.equal(sample.yaw, 0)
+        assert.equal(sample.tilt, 0)
+        assert.ok(sample.z >= summary.landingHeight - 1e-9)
+        applyDronePose(rig, sample)
+        const bounds = sweptAircraftBounds(rig)
+        assert.ok(bounds.min.z >= -1e-9, `Landing clips the ground at ${sample.t}`)
+        assert.ok(bounds.min.y > dataset.metadata.scene.passage.endY, 'Landing must occur beyond the entire wall')
+        if (!index) return
+        const previous = landingSamples[index - 1]
+        assert.ok(sample.z <= previous.z + 1e-9, 'Landing must not climb')
+        const speed = (previous.z - sample.z) / (sample.t - previous.t)
+        assert.ok(speed <= allowedSpeed + 1e-7, `Descent speed ${speed} exceeds ${allowedSpeed}`)
+        descentSpeeds.push(speed)
+        peakSpeed = Math.max(peakSpeed, speed)
+      })
+      assert.ok(peakSpeed > allowedSpeed * .99, 'Descent uses the configured capped speed')
+      assert.ok(descentSpeeds[0] < .005 && descentSpeeds.at(-1) < .005, 'Descent starts and ends smoothly')
+
+      const touchdown = sampleAt(dataset.samples, landed.from)
+      assert.equal(touchdown.z, summary.landingHeight)
+      applyDronePose(rig, touchdown)
+      closeTo(sweptAircraftBounds(rig).min.z, 0)
+      for (const sample of dataset.samples.filter(sample => sample.t >= landed.from)) {
+        const { t: sampleTime, ...pose } = sample
+        const { t: landingTime, ...touchdownPose } = touchdown
+        assert.deepEqual(pose, touchdownPose, `Landed pose moves at ${sampleTime}`)
+      }
+    }
+  })
 })
 
 test('peak translation speed and tilt rate satisfy the configured limits including phase boundaries', () => {
@@ -186,7 +247,8 @@ test('parameter changes alter the actual trajectory, preserve the input, and exp
   assert.deepEqual(input, original)
   assert.notEqual(first.summary.tiltDeg, second.summary.tiltDeg)
   assert.notEqual(first.summary.duration, second.summary.duration)
-  assert.notEqual(first.dataset.samples.at(-1).z, second.dataset.samples.at(-1).z)
+  assert.notEqual(first.dataset.metadata.scene.hoverTarget.z, second.dataset.metadata.scene.hoverTarget.z)
+  closeTo(first.dataset.samples.at(-1).z, second.dataset.samples.at(-1).z)
   const imported = validateDataset(JSON.parse(JSON.stringify(first.dataset)))
   assert.deepEqual(imported.metadata.scene, first.dataset.metadata.scene)
   assert.deepEqual(imported.metadata.stages, first.dataset.metadata.stages)
@@ -195,6 +257,8 @@ test('parameter changes alter the actual trajectory, preserve the input, and exp
   closeTo(imported.metadata.scene.passage.right - imported.metadata.scene.passage.left, input.gapWidth)
   assert.equal(imported.metadata.modelType, 'geometry-planner')
   assert.equal(imported.metadata.kind, 'synthetic')
+  assert.deepEqual(imported.metadata.scene.hoverTarget, { x: 1, y: 9, z: input.targetHeight })
+  assert.notEqual(imported.metadata.scene.hoverTarget.z, imported.samples.at(-1).z, 'The hover marker remains at the requested altitude after landing')
 })
 
 test('planned kinematics never impersonate measured reference tracking or actuator outputs', () => {

@@ -22,7 +22,8 @@
 .settings-panel .source-note>svg:last-child{margin-left:auto}
 .scene-container{height:360px}
 .stage-strip{margin-top:16px;margin-bottom:16px}
-.stage-strip:has(.stage-item:nth-child(7)){gap:12px}
+.stage-strip:has(.stage-item:nth-child(7)){gap:12px;overflow-x:auto}
+.stage-strip:has(.stage-item:nth-child(9)) .stage-item{min-width:102px;flex-shrink:0}
 .stage-strip:has(.stage-item:nth-child(7)) .stage-caption,.stage-strip:has(.stage-item:nth-child(7)) .stage-arrow{display:none}
 .page-footer{padding-top:16px}
 @media(min-width:1650px){.scene-container{height:410px}}

@@ -4,7 +4,7 @@ export const DEFAULT_PLAN_PARAMS = Object.freeze({ gapWidth: .24, targetHeight: 
 
 const LIMITS = {
   gapWidth: [.12, 1.2, '狭缝宽度', 'm'],
-  targetHeight: [.3, 5, '最终悬停高度', 'm'],
+  targetHeight: [.3, 5, '目标悬停高度', 'm'],
   maxTiltDeg: [0, 75, '最大倾转角', '°'],
   clearance: [.005, .05, '单侧安全余量', 'm'],
   speed: [.1, 1.5, '最大飞行速度', 'm/s'],
@@ -94,17 +94,20 @@ export function planFlight(raw = DEFAULT_PLAN_PARAMS) {
     if (lowestTransitHeight > highestTransitHeight) return { ok: false, error: '机体在指定安全余量下无法满足通道高度和地面净距。' }
     const transitHeight = Math.min(highestTransitHeight, Math.max(parameters.targetHeight, lowestTransitHeight))
     const groundHeight = -horizontalEnvelope.minZ + .004
+    // The body's origin stays above the ground when its landing skids touch it.
+    const landingHeight = -horizontalEnvelope.minZ
+    const landingSpeed = Math.min(parameters.speed, .4)
     const startY = passage.startY - 1
     const finishY = passage.endY + 1
     const start = { x: 1, y: startY, z: groundHeight, roll: 0, pitch: 0, yaw: 0, tilt: 0 }
     const segments = []
     let time = 0, previousPose = start
-    const addSegment = (name, endPose, minimumDuration = .8) => {
+    const addSegment = (name, endPose, minimumDuration = .8, peakSpeed = parameters.speed) => {
       const distance = Math.hypot(endPose.x - previousPose.x, endPose.y - previousPose.y, endPose.z - previousPose.z)
       const degrees = Math.abs(endPose.tilt - previousPose.tilt) / DEG
       // Quintic smoothstep's peak derivative is 1.875, so these are actual
       // peak-rate limits, rather than merely mean speeds.
-      const duration = Math.max(minimumDuration, 1.875 * distance / parameters.speed, 1.875 * degrees / 30)
+      const duration = Math.max(minimumDuration, 1.875 * distance / peakSpeed, 1.875 * degrees / 30)
       const nextTime = fixedTime(time + duration + 1e-9)
       segments.push({ name, from: time, to: nextTime, start: previousPose, end: endPose })
       previousPose = endPose
@@ -115,12 +118,15 @@ export function planFlight(raw = DEFAULT_PLAN_PARAMS) {
     const exited = { ...folded, y: finishY }
     const recovered = { ...exited, tilt: 0 }
     const hovering = { ...recovered, z: parameters.targetHeight }
+    const landed = { ...hovering, z: landingHeight }
     addSegment('垂直起飞', lifted)
     addSegment('通道前倾转', folded)
     addSegment('倾转穿越狭缝', exited)
     addSegment('离开通道后恢复', recovered)
-    addSegment('调整最终悬停高度', hovering)
+    addSegment('调整悬停高度', hovering)
     addSegment('稳定悬停', hovering, 3)
+    addSegment('平稳降落', landed, 1, landingSpeed)
+    addSegment('着陆完成', landed, 1.5)
     const duration = time
     const times = new Set([0, duration, ...segments.flatMap(segment => [segment.from, segment.to])])
     for (let tick = 1; tick * DT < duration; tick++) times.add(fixedTime(tick * DT))
@@ -170,6 +176,8 @@ export function planFlight(raw = DEFAULT_PLAN_PARAMS) {
       actualClearance,
       transitHeight,
       targetHeight: parameters.targetHeight,
+      landingHeight,
+      landingSpeed,
       duration,
       minPossibleWidth,
       straightWidth,
@@ -180,10 +188,10 @@ export function planFlight(raw = DEFAULT_PLAN_PARAMS) {
         kind: 'synthetic',
         modelType: 'geometry-planner',
         title: `自主规划 · ${(parameters.gapWidth * 100).toFixed(1)} cm 狭缝 / ${parameters.targetHeight.toFixed(2)} m 悬停`,
-        description: '根据原尺寸机体与完整旋翼扫掠包络计算安全倾转角，以五次平滑曲线生成起飞、穿越、退出和最终悬停路径。',
+        description: '根据原尺寸机体与完整旋翼扫掠包络计算安全倾转角，以五次平滑曲线生成起飞、穿越、退出、目标高度悬停与降落路径；悬停 3 秒后在通道出口外平稳着陆。',
         angleUnit: 'rad', positionUnit: 'm', timeUnit: 's',
         planner: { parameters: { ...parameters }, summary: { ...summary } },
-        scene: { passage },
+        scene: { passage, hoverTarget: { x: hovering.x, y: hovering.y, z: hovering.z } },
         stages: segments.map(({ name, from, to }) => ({ name, from, to })),
         limitations: [
           '这是浏览器内的几何与运动学规划演示，不是 MATLAB/Simulink 闭环动力学仿真或实飞验证。',

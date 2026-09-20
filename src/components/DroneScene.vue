@@ -12,6 +12,7 @@ const props = defineProps({
   showWalls: { type: Boolean, default: true },
   cameraMode: { type: String, default: 'perspective' },
   playing: { type: Boolean, default: false },
+  landed: { type: Boolean, default: false },
   fitKey: { type: Number, default: 0 },
   passage: { type: Object, default: () => ({ ...PASSAGE }) },
   hoverTarget: { type: Object, default: null },
@@ -365,7 +366,7 @@ function animate(now) {
   if (contextLost) return
   const dt = Math.min((now - lastFrame) / 1000 || 0, .1)
   lastFrame = now
-  if (props.playing) rotorBlades.forEach((rotor, i) => { rotor.rotation.z += dt * 34 * (i % 2 ? 1 : -1) })
+  if (props.playing && !props.landed) rotorBlades.forEach((rotor, i) => { rotor.rotation.z += dt * 34 * (i % 2 ? 1 : -1) })
   controls.update()
   renderer.setViewport(0, 0, viewportWidth, viewportHeight)
   renderer.setScissorTest(false)
