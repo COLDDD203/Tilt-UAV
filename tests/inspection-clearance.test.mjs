@@ -1,10 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import * as THREE from 'three'
-import { createDroneModel } from '../src/lib/droneModel.js'
+import { applyDronePose, createDroneModel } from '../src/lib/droneModel.js'
 import { createInspectionModel } from '../src/lib/inspectionModel.js'
 import { applyInspectionPose, DEFAULT_INSPECTION, inspectionDimensions, validateInspection } from '../src/lib/inspection.js'
 import { INSPECTION_CLEARANCE } from '../src/lib/inspectionClearance.js'
+import { sampleAt } from '../src/lib/data.js'
 
 const EPS = 1e-8
 const neutral = { ...DEFAULT_INSPECTION, beta: 0, roll: 0, pitch: 0, yaw: 0 }
@@ -111,8 +113,25 @@ function assertNoRotorCollision(rig, label) {
   }
 }
 
+function formerCrossarmFixture() {
+  // Minimal frozen reproduction of the removed geometry: a transverse arm at
+  // z=0, motor pivot 3 mm above it and rotor only 15 mm above that pivot. Keeping
+  // this fixture independent avoids recreating the old bug from the new model.
+  const drone = new THREE.Group(), airframe = new THREE.Group(), mount = new THREE.Group(), rotor = new THREE.Group()
+  const surface = new THREE.MeshBasicMaterial()
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(.178, .012, .008), surface)
+  arm.position.set(0, .088, 0)
+  drone.add(airframe)
+  airframe.add(arm, mount)
+  mount.position.set(.079, .088, .003)
+  mount.add(rotor)
+  rotor.position.z = .015
+  rotor.add(new THREE.Mesh(new THREE.CircleGeometry(.065, 64), surface))
+  return { drone, airframe, rotorMounts: [mount], rotorBlades: [rotor], bodyMeshes: [arm] }
+}
+
 test('the reported beta 30 arm collision is reproduced in the former model and absent from the inspector', () => {
-  const previous = createDroneModel(), current = createInspectionModel()
+  const previous = formerCrossarmFixture(), current = createInspectionModel()
   try {
     applyInspectionPose(previous, DEFAULT_INSPECTION)
     previous.drone.updateMatrixWorld(true)
@@ -121,6 +140,26 @@ test('the reported beta 30 arm collision is reproduced in the former model and a
     applyInspectionPose(current, DEFAULT_INSPECTION)
     assertNoRotorCollision(current, 'default beta 30')
   } finally { dispose(previous); dispose(current) }
+})
+
+test('the shared replay model has no internal rotor collisions across every original sample and interpolation midpoint', t => {
+  const recording = JSON.parse(readFileSync(new URL('../public/data/recorded.json', import.meta.url), 'utf8'))
+  const rig = createDroneModel(), { samples } = recording
+  let count = 0
+  try {
+    for (let index = 0; index < samples.length; index++) {
+      const times = [samples[index].t]
+      if (index) times.push((samples[index - 1].t + samples[index].t) / 2)
+      for (const time of times) {
+        const sample = sampleAt(samples, time)
+        applyDronePose(rig, sample, recording.metadata.scene.headingOffsetRad)
+        assertNoRotorCollision(rig, `original replay at ${time}s`)
+        count++
+      }
+    }
+    assert.equal(count, 2 * samples.length - 1)
+    t.diagnostic(`${count} complete replay poses checked against actual model meshes and full swept rotors`)
+  } finally { dispose(rig) }
 })
 
 test('every rendered solid and the complete propeller fit their declared inspection envelopes', () => {

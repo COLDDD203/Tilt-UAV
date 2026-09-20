@@ -24,16 +24,20 @@ test('the aircraft uses the source metre dimensions, including the complete rota
   assert.equal(DRONE_DIMENSIONS.armHalfX, .079)
   assert.equal(DRONE_DIMENSIONS.armHalfY, .088)
   assert.equal(DRONE_DIMENSIONS.propellerRadius, .065)
+  rig.drone.updateMatrixWorld(true)
   for (const mount of rig.rotorMounts) {
-    assert.equal(Math.abs(mount.position.x), .079)
-    assert.equal(Math.abs(mount.position.y), .088)
+    const position = mount.getWorldPosition(new THREE.Vector3())
+    assert.equal(Math.abs(position.x), .079)
+    assert.equal(Math.abs(position.y), .088)
   }
   for (const rotor of rig.rotorBlades) {
     rotor.traverse(part => {
       if (!part.isMesh) return
       const vertices = part.geometry.getAttribute('position')
+      const toRotor = rotor.matrixWorld.clone().invert().multiply(part.matrixWorld)
       for (let i = 0; i < vertices.count; i++) {
-        assert.ok(Math.hypot(vertices.getX(i), vertices.getY(i)) <= .065 + 1e-8, 'Blade corner exceeds the full swept disk')
+        const vertex = new THREE.Vector3().fromBufferAttribute(vertices, i).applyMatrix4(toRotor)
+        assert.ok(Math.hypot(vertex.x, vertex.y) <= .065 + 1e-8, 'Blade corner exceeds the full swept disk')
       }
     })
   }

@@ -194,6 +194,13 @@ test('landing is level, monotone and speed limited, touches the floor without cl
       assert.equal(touchdown.z, summary.landingHeight)
       applyDronePose(rig, touchdown)
       closeTo(sweptAircraftBounds(rig).min.z, 0)
+      const actual = new THREE.Box3().setFromObject(rig.drone, true)
+      closeTo(actual.min.z, 0, 1e-8)
+      assert.ok(actual.min.y > dataset.metadata.scene.passage.endY, 'The actual rendered landing geometry must be beyond the wall')
+      const feet = rig.bodyMeshes.filter(part => part.name === 'motor-cradle-base')
+      assert.equal(feet.length, 4, 'All four compact motor cradles provide the landing support')
+      for (const foot of feet) closeTo(new THREE.Box3().setFromObject(foot, true).min.z, 0, 1e-8)
+      assert.ok(new THREE.Box3().setFromObject(rig.imuMount, true).min.z > .001, 'The central IMU remains above the landing supports')
       for (const sample of dataset.samples.filter(sample => sample.t >= landed.from)) {
         const { t: sampleTime, ...pose } = sample
         const { t: landingTime, ...touchdownPose } = touchdown

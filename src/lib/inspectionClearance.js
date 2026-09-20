@@ -1,4 +1,5 @@
-// Inspector-only mechanical clearances, in metres. Flight geometry is separate.
+// Shared compact-aircraft mechanical clearances, in metres. The flight replay
+// and the independent body inspector use the same geometry and support sizes.
 export const INSPECTION_CLEARANCE = Object.freeze({
   maxBetaDeg: 90,
   rotorPlaneOffset: .028,

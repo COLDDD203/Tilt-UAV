@@ -94,7 +94,7 @@ export function planFlight(raw = DEFAULT_PLAN_PARAMS) {
     if (lowestTransitHeight > highestTransitHeight) return { ok: false, error: '机体在指定安全余量下无法满足通道高度和地面净距。' }
     const transitHeight = Math.min(highestTransitHeight, Math.max(parameters.targetHeight, lowestTransitHeight))
     const groundHeight = -horizontalEnvelope.minZ + .004
-    // The body's origin stays above the ground when its landing skids touch it.
+    // The body's origin stays above the ground when the four motor cradle feet touch it.
     const landingHeight = -horizontalEnvelope.minZ
     const landingSpeed = Math.min(parameters.speed, .4)
     const startY = passage.startY - 1

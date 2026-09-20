@@ -1,8 +1,8 @@
 import * as THREE from 'three'
-import { DRONE_DIMENSIONS } from './droneModel.js'
+import { DRONE_DIMENSIONS } from './droneDimensions.js'
 import { INSPECTION_CLEARANCE } from './inspectionClearance.js'
 
-// An inspection-only mechanical model. The MATLAB replay uses droneModel.js.
+// One mechanical model shared by aircraft inspection and flight playback.
 // Every structural dimension is fixed when the model is built; changing beta
 // only rotates the frame and the counter-rotating motor joints.
 function surface(color, extra = {}) {
@@ -13,6 +13,7 @@ function mesh(geometry, material, parent, position = [0, 0, 0], name = '') {
   const part = new THREE.Mesh(geometry, material)
   part.position.set(...position)
   part.name = name
+  part.castShadow = part.receiveShadow = name !== 'full-rotor-swept-disc'
   parent.add(part)
   return part
 }
@@ -171,7 +172,6 @@ export function createInspectionModel(dimensions = DRONE_DIMENSIONS) {
   centralFrame.traverse(part => { if (part.isMesh) centralMeshes.push(part) })
   imuMount.traverse(part => { if (part.isMesh) centralMeshes.push(part) })
   const sideArmGroups = [], sideArmMeshes = [], motorMeshes = [], rotorMounts = [], rotorBlades = []
-  let index = 0
   for (const side of [-1, 1]) {
     const arm = new THREE.Group()
     arm.name = side < 0 ? 'left-compensated-arm' : 'right-compensated-arm'
@@ -182,22 +182,25 @@ export function createInspectionModel(dimensions = DRONE_DIMENSIONS) {
     cylinder(.0046, .027, purple, arm, [0, 0, 0], 'y', 'central-arm-journal')
     beam([0, -y, -.004], [0, y, -.004], .0007, rubber, arm, 'side-arm-cable')
     for (const front of [1, -1]) {
-      const rotorIndex = index++
+      // Preserve the flight data's LF, RF, RR, LR rotor order: alternating
+      // spin signs then give equal rotation directions on each diagonal.
+      const rotorIndex = side < 0 ? (front > 0 ? 0 : 3) : (front > 0 ? 1 : 2)
       const accent = front > 0 ? teal : purple
       const mount = new THREE.Group()
       mount.name = `rotor-mount-${rotorIndex + 1}`
       mount.position.set(0, front * y, 0)
       arm.add(mount)
-      rotorMounts.push(mount)
+      rotorMounts[rotorIndex] = mount
       // Short motor cradle, directly attached to the longitudinal arm. Its
       // compact U profile follows the reference mechanism, with no long posts.
       const motor = new THREE.Group()
       motor.name = `motor-housing-${rotorIndex + 1}`
       mount.add(motor)
       for (const cradleX of [-.0066, .0066]) {
-        mesh(new THREE.BoxGeometry(.0024, .009, .022), accent, motor, [cradleX, 0, -.004], 'motor-cradle-cheek')
+        mesh(new THREE.BoxGeometry(.0024, .009, .026), accent, motor, [cradleX, 0, -.006], 'motor-cradle-cheek')
       }
-      mesh(new THREE.BoxGeometry(.0156, .009, .0025), accent, motor, [0, 0, -.015], 'motor-cradle-base')
+      // Four cradle bases form the landing contacts, below the central IMU.
+      mesh(new THREE.BoxGeometry(.0156, .009, .0025), accent, motor, [0, 0, -.019], 'motor-cradle-base')
       cylinder(.005, .010, aluminium, motor, [0, 0, 0], 'y', 'motor-arm-collar')
       cylinder(.0075, .007, aluminium, motor, [0, 0, .005], 'z', 'motor-base')
       cylinder(.0092, .012, carbon, motor, [0, 0, h - .014], 'z', 'motor-can')
@@ -216,7 +219,7 @@ export function createInspectionModel(dimensions = DRONE_DIMENSIONS) {
       rotor.position.z = h
       rotor.rotation.z = (rotorIndex % 2 ? Math.PI / 2 : 0) + .25
       mount.add(rotor)
-      rotorBlades.push(rotor)
+      rotorBlades[rotorIndex] = rotor
       const blades = bladeGeometry(radius)
       const tips = bladeTipGeometry(radius, Math.min(.0018, radius * .025) / 2 + .00005)
       for (const rotation of [0, Math.PI]) {
@@ -234,6 +237,8 @@ export function createInspectionModel(dimensions = DRONE_DIMENSIONS) {
   }
   const bodyMeshes = []
   drone.traverse(part => {
+    // The replay's close-up camera selects layer 1; the main camera uses 0.
+    part.layers.enable(1)
     if (!part.isMesh) return
     for (let ancestor = part.parent; ancestor; ancestor = ancestor.parent) {
       if (rotorBlades.includes(ancestor)) return

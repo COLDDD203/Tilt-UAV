@@ -52,10 +52,10 @@ test('positive tilt lowers the right side across the passage without pitching th
       closeTo(up.x, Math.sin(tilt))
       closeTo(up.y, 0)
       // Inspect actual front/rear motor positions as well as orientation axes.
-      const motors = rig.rotorMounts.map(mount => mount.getWorldPosition(new THREE.Vector3()))
-      closeTo(motors[0].z, motors[3].z)
-      closeTo(motors[1].z, motors[2].z)
-      closeTo(motors[0].z - motors[1].z, 2 * .079 * Math.sin(tilt))
+      const motors = rig.rotorMounts.map(mount => mount.getWorldPosition(new THREE.Vector3())).sort((a, b) => a.x - b.x || a.y - b.y)
+      closeTo(motors[0].z, motors[1].z)
+      closeTo(motors[2].z, motors[3].z)
+      closeTo(motors[0].z - motors[2].z, 2 * .079 * Math.sin(tilt))
     }
   })
 })
@@ -94,7 +94,7 @@ test('uncalibrated imports retain arbitrary yaw and reset a previous recording c
   })
 })
 
-test('rotor compensation cancels frame bank while retaining source roll and pitch', () => {
+test('complete side arms, IMU and rotors compensate bank once while retaining source roll and pitch', () => {
   withModel(rig => {
     const sample = { ...neutralPose, roll: radians(2), pitch: radians(-3), yaw: radians(80) }
     const offset = -Math.PI / 3, yaw = sample.yaw + offset
@@ -105,12 +105,13 @@ test('rotor compensation cancels frame bank while retaining source roll and pitc
       Math.sin(yaw) * Math.sin(pitch) * Math.cos(roll) - Math.cos(yaw) * Math.sin(roll),
       Math.cos(pitch) * Math.cos(roll),
     ]
-    for (const tilt of [0, radians(30), radians(62)]) {
+    for (const tilt of [0, radians(30), radians(62), radians(90), radians(-90)]) {
       applyDronePose(rig, { ...sample, tilt }, offset)
       rig.drone.updateMatrixWorld(true)
-      for (const rotor of rig.rotorBlades) {
-        direction(rotor, [0, 0, 1]).toArray().forEach((value, index) => closeTo(value, expected[index]))
+      for (const part of [...rig.tiltGroups, ...rig.rotorBlades]) {
+        direction(part, [0, 0, 1]).toArray().forEach((value, index) => closeTo(value, expected[index]))
       }
+      for (const mount of rig.rotorMounts) closeTo(mount.rotation.y, 0)
     }
   })
 })

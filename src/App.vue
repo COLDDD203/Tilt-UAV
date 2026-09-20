@@ -166,7 +166,7 @@ onBeforeUnmount(() => { cancelAnimationFrame(animationId); window.removeEventLis
     </aside>
 
     <div class="main-shell">
-      <header class="topbar"><div class="breadcrumb"><span>无人机控制实验</span><ChevronRight :size="13"/><strong>{{ navigation.find(n => n.id === page)?.label || '使用指南' }}</strong></div><div class="topbar-right"><span class="offline-pill"><span class="status-dot"/>{{ page === 'airframe' ? '机体姿态预览' : isPlanned ? '参数化规划' : '离线回放' }}</span></div></header>
+      <header class="topbar"><div class="breadcrumb"><span>无人机控制实验</span><ChevronRight :size="13"/><strong>{{ navigation.find(n => n.id === page)?.label || '使用指南' }}</strong></div><div class="topbar-right"><span class="offline-pill"><span class="status-dot"/>{{ page === 'airframe' ? '机体姿态' : isPlanned ? '参数化规划' : '离线回放' }}</span></div></header>
       <main :class="{ 'workspace-page': page === 'workspace' }">
         <div class="page-heading">
           <div><span class="page-kicker">TILTLAB <span>/</span> {{ page === 'workspace' ? 'FLIGHT WORKSPACE' : page === 'airframe' ? 'AIRFRAME INSPECTOR' : page === 'analysis' ? 'FLIGHT ANALYTICS' : page === 'records' ? 'FLIGHT RECORDS' : 'GETTING STARTED' }}</span><h1>{{ page === 'workspace' ? '让每一度倾转，清晰可见。' : page === 'airframe' ? '换个角度，读懂机体。' : page === 'analysis' ? '数据分析' : page === 'records' ? '实验记录' : '使用指南' }}</h1><p v-if="page === 'workspace'">可倾转四旋翼 · 参数规划与飞行回放</p><p v-else-if="page === 'airframe'">机架倾转 · 整机姿态 · 机体尺寸</p></div>

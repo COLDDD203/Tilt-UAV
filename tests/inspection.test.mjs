@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import * as THREE from 'three'
 import { createDroneModel, DRONE_DIMENSIONS, sweptAircraftBounds } from '../src/lib/droneModel.js'
+import { createInspectionModel } from '../src/lib/inspectionModel.js'
 import { applyInspectionPose, DEFAULT_INSPECTION, inspectionDimensions, INSPECTION_LIMITS, validateInspection } from '../src/lib/inspection.js'
 
 const closeTo = (actual, expected, tolerance = 1e-8) => assert.ok(
@@ -27,14 +28,17 @@ function withModel(value, callback) {
   try { callback(rig) } finally { dispose(rig) }
 }
 
-test('default dimension conversion preserves the unchanged flight model geometry exactly', () => {
+test('flight replay and inspection construct exactly the same complete compact aircraft', () => {
   assert.deepEqual(inspectionDimensions(DEFAULT_INSPECTION), DRONE_DIMENSIONS)
-  const original = createDroneModel(), explicit = createDroneModel(inspectionDimensions(DEFAULT_INSPECTION))
+  const original = createDroneModel(), explicit = createInspectionModel(inspectionDimensions(DEFAULT_INSPECTION))
   const shape = rig => {
     const objects = []
     rig.drone.traverse(part => objects.push({
       type: part.type,
-      geometry: part.geometry?.parameters,
+      geometry: part.geometry?.type,
+      vertices: part.geometry && Object.fromEntries(Object.entries(part.geometry.attributes).map(([name, values]) => [name, [...values.array]])),
+      indices: part.geometry?.index && [...part.geometry.index.array],
+      material: part.material && { type: part.material.type, color: part.material.color?.getHex(), opacity: part.material.opacity, roughness: part.material.roughness, metalness: part.material.metalness },
       position: part.position.toArray(),
       quaternion: part.quaternion.toArray(),
       scale: part.scale.toArray(),
@@ -43,6 +47,9 @@ test('default dimension conversion preserves the unchanged flight model geometry
   }
   try {
     assert.deepEqual(shape(explicit), shape(original))
+    assert.equal(original.tiltGroups.length, 3)
+    assert.equal(original.sideArmGroups.length, 2)
+    assert.equal(original.pylonMeshes.length, 0)
     const size = sweptAircraftBounds(explicit).getSize(new THREE.Vector3())
     closeTo(size.x, .288)
     closeTo(size.y, .306)
@@ -54,18 +61,25 @@ test('motor spans and disc diameter change real geometry in metres', () => {
   const value = { ...neutral, spanX: 400, spanY: 600, rotorDiameter: 250 }
   withModel(value, rig => {
     applyInspectionPose(rig, value)
-    assert.deepEqual(rig.rotorMounts.map(mount => mount.position.toArray()), [
-      [-.2, .3, .003], [.2, .3, .003], [.2, -.3, .003], [-.2, -.3, .003],
+    const motors = rig.rotorMounts.map(mount => mount.getWorldPosition(new THREE.Vector3())).sort((a, b) => a.x - b.x || a.y - b.y)
+    assert.deepEqual(motors.map(position => position.toArray()), [
+      [-.2, -.3, 0], [-.2, .3, 0], [.2, -.3, 0], [.2, .3, 0],
     ])
     const size = sweptAircraftBounds(rig).getSize(new THREE.Vector3())
     closeTo(size.x, .65)
     closeTo(size.y, .85)
-    closeTo(rig.airframe.children[1].scale.y, .072 * (.3 / .088))
     assert.deepEqual(rig.drone.scale.toArray(), [1, 1, 1], 'Geometry is not a display-scale trick')
+    rig.drone.updateMatrixWorld(true)
     for (const rotor of rig.rotorBlades) {
-      const blade = rotor.children.find(part => part.geometry?.type === 'BoxGeometry')
-      const { width, height } = blade.geometry.parameters
-      assert.ok(Math.hypot(width / 2, height / 2) <= .125, 'The whole blade fits inside its swept disc')
+      const blade = rotor.getObjectByName('tapered-propeller-blade')
+      const transform = rotor.matrixWorld.clone().invert().multiply(blade.matrixWorld)
+      const vertices = blade.geometry.attributes.position
+      let actualRadius = 0
+      for (let i = 0; i < vertices.count; i++) {
+        const point = new THREE.Vector3().fromBufferAttribute(vertices, i).applyMatrix4(transform)
+        actualRadius = Math.max(actualRadius, Math.hypot(point.x, point.y))
+      }
+      assert.ok(actualRadius > .12 && actualRadius <= .125, 'The actual shaped blade scales with its 125 mm radius')
     }
   })
 })
@@ -105,8 +119,8 @@ test('positive manual roll lowers the right side without pitching the nose', () 
     const nose = direction(rig.airframe, [0, 1, 0]), right = direction(rig.airframe, [1, 0, 0])
     closeTo(nose.x, 0); closeTo(nose.y, 1); closeTo(nose.z, 0)
     closeTo(right.x, Math.sqrt(3) / 2); closeTo(right.z, -.5)
-    const [leftFront, rightFront] = rig.rotorMounts.map(mount => mount.getWorldPosition(new THREE.Vector3()))
-    assert.ok(rightFront.z < leftFront.z)
+    const motors = rig.rotorMounts.map(mount => mount.getWorldPosition(new THREE.Vector3())).sort((a, b) => a.x - b.x)
+    assert.ok(motors.at(-1).z < motors[0].z)
   })
 })
 
@@ -116,8 +130,8 @@ test('positive manual pitch raises the nose and positive yaw turns nose left', (
     rig.drone.updateMatrixWorld(true)
     const noseUp = direction(rig.airframe, [0, 1, 0])
     closeTo(noseUp.x, 0); closeTo(noseUp.y, Math.sqrt(3) / 2); closeTo(noseUp.z, .5)
-    const motors = rig.rotorMounts.map(mount => mount.getWorldPosition(new THREE.Vector3()))
-    assert.ok(motors[0].z > motors[3].z, 'Front motor rises above rear motor')
+    const motors = rig.rotorMounts.map(mount => mount.getWorldPosition(new THREE.Vector3())).sort((a, b) => a.y - b.y)
+    assert.ok(motors.at(-1).z > motors[0].z, 'Front motor rises above rear motor')
     applyInspectionPose(rig, { ...neutral, yaw: 90 })
     rig.drone.updateMatrixWorld(true)
     const noseLeft = direction(rig.airframe, [0, 1, 0])

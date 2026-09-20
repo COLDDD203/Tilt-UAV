@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { createDroneModel, applyDronePose, PASSAGE } from '../lib/droneModel.js'
+import { applyGroundContact } from '../lib/sceneGeometry.js'
 
 const props = defineProps({
   sample: { type: Object, default: null },
@@ -99,7 +100,7 @@ function createDrone() {
   shadow = new THREE.Mesh(new THREE.PlaneGeometry(.45, .45), new THREE.MeshBasicMaterial({
     map: new THREE.CanvasTexture(canvas), transparent: true, depthWrite: false,
   }))
-  shadow.position.z = .018
+  shadow.position.z = .0008
   scene.add(shadow)
 }
 
@@ -113,7 +114,7 @@ function createEnvironment() {
   scene.add(fill)
   scene.traverse(object => { if (object.isLight) object.layers.enable(1) })
 
-  floor = addMesh(new THREE.PlaneGeometry(80, 80), material(0xf1f0e9, { metalness: 0 }), scene, [0, 0, -.008])
+  floor = addMesh(new THREE.PlaneGeometry(80, 80), material(0xf1f0e9, { metalness: 0 }), scene, [0, 0, -.0005])
   floor.castShadow = false
   grid = new THREE.GridHelper(40, 80, 0xd4d5c8, palette.grid)
   grid.rotation.x = Math.PI / 2
@@ -276,6 +277,7 @@ function updateSample() {
     x: finite(sample.x), y: finite(sample.y), z: finite(sample.z),
     roll: finite(sample.roll), pitch: finite(sample.pitch), yaw: finite(sample.yaw), tilt: finite(sample.tilt),
   }, props.headingOffsetRad)
+  applyGroundContact(rig)
   shadow.position.x = drone.position.x
   shadow.position.y = drone.position.y
   shadow.material.opacity = Math.max(.15, .75 - Math.max(0, drone.position.z) * .1)
@@ -338,7 +340,7 @@ function fitCamera() {
   controls.maxDistance = Math.max(50, distance * 3)
   controls.update()
   grid.position.set(center.x, center.y, 0)
-  floor.position.set(center.x, center.y, -.008)
+  floor.position.set(center.x, center.y, -.0005)
 }
 
 function resize() {
