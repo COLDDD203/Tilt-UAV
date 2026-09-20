@@ -19,7 +19,7 @@ const host = ref(null)
 const ready = ref(false)
 let chart, resizeObserver, cursorTimer, resizeFrame
 let lastCursorUpdate = 0
-const colors = ['#129b8f', '#5484c5', '#d59b50', '#9b7ac6']
+const colors = ['#788b63', '#9986c4', '#c59f39', '#615277']
 const valid = value => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value))
 const reference = (sample, axis) => sample[`ref${axis.toUpperCase()}`] ?? sample.reference?.[axis] ?? sample[`${axis}Ref`] ?? sample[`${axis}r`]
 const modes = {
@@ -52,11 +52,11 @@ function cursor() {
     silent: true,
     symbol: ['none', 'none'],
     animation: false,
-    lineStyle: { color: '#314f61', type: 'dashed', width: 1, opacity: .65 },
+    lineStyle: { color: '#494d43', type: 'dashed', width: 1, opacity: .65 },
     label: {
       show: true, position: 'insideEndTop', distance: 6,
       formatter: `${Number(props.time).toFixed(2)} s`,
-      color: '#5b7180', fontSize: 9, backgroundColor: '#ffffffdf', padding: [3, 4],
+      color: '#646b59', fontSize: 9, backgroundColor: '#faf9f4ed', padding: [3, 4],
     },
     data: Number.isFinite(props.time) ? [{ xAxis: props.time }] : [],
   }
@@ -71,9 +71,9 @@ function makeSeries(key) {
     data: props.samples.filter(sample => valid(sample.t)).map(sample => [Number(sample.t), valueAt(sample, key)]),
     showSymbol: false, symbol: 'none', connectNulls: false,
     animation: false, sampling: 'lttb', clip: true,
-    lineStyle: { width: 1.65, color: colors[index] },
+    lineStyle: { width: 2, color: colors[index] },
     itemStyle: { color: colors[index] },
-    emphasis: { focus: 'series', lineStyle: { width: 2.3 } },
+    emphasis: { focus: 'series', lineStyle: { width: 2.8 } },
   }
 }
 
@@ -104,20 +104,20 @@ function rebuild() {
   chart.setOption({
     animation: false,
     backgroundColor: 'transparent',
-    textStyle: { fontFamily: 'Inter, "Microsoft YaHei", system-ui, sans-serif', fontSize: 11, color: '#718290' },
-    grid: { top: 55, left: 56, right: 23, bottom: 34, containLabel: false },
+    textStyle: { fontFamily: 'Inter, "Microsoft YaHei", system-ui, sans-serif', fontSize: 11, color: '#777d6c' },
+    grid: { top: 55, left: 56, right: 23, bottom: 45, containLabel: false },
     legend: {
       top: 3, right: 15, left: 105, type: 'scroll', itemWidth: 14, itemHeight: 3, itemGap: 16,
-      icon: 'roundRect', textStyle: { color: '#718290', fontSize: 10 },
-      pageIconColor: '#67818e', pageIconInactiveColor: '#d9e0e5', pageTextStyle: { color: '#8795a1' },
+      icon: 'roundRect', textStyle: { color: '#777d6c', fontSize: 10 },
+      pageIconColor: '#69755b', pageIconInactiveColor: '#dedfd4', pageTextStyle: { color: '#818378' },
       data: series.filter(item => item.name).map(item => item.name),
     },
     tooltip: {
       trigger: 'axis', confine: true, transitionDuration: 0,
-      backgroundColor: 'rgba(255,255,255,.97)', borderColor: '#e5ecef', borderWidth: 1,
-      padding: [10, 13], textStyle: { color: '#506475', fontSize: 11 },
-      extraCssText: 'box-shadow:0 4px 18px rgba(35,62,78,.08);border-radius:8px;',
-      axisPointer: { type: 'line', lineStyle: { color: '#a7b8c3', type: 'dashed' } },
+      backgroundColor: 'rgba(250,249,244,.98)', borderColor: '#dedfd3', borderWidth: 1,
+      padding: [10, 13], textStyle: { color: '#4e5545', fontSize: 11 },
+      extraCssText: 'box-shadow:0 4px 18px rgba(48,49,44,.08);border-radius:16px;',
+      axisPointer: { type: 'line', lineStyle: { color: '#a7ad98', type: 'dashed' } },
       formatter: params => {
         if (!params?.length) return ''
         const time = Number(params[0].value?.[0] ?? params[0].axisValue)
@@ -125,25 +125,25 @@ function rebuild() {
           const value = item.value?.[1]
           return `${item.marker} ${item.seriesName}<span style="float:right;margin-left:22px;font-variant-numeric:tabular-nums">${valid(value) ? Number(value).toFixed(3) : '—'}</span>`
         })
-        return `<div style="margin-bottom:7px;color:#8b9aa6">时间 ${Number.isFinite(time) ? time.toFixed(2) : '—'} s</div>${entries.join('<br>')}`
+        return `<div style="margin-bottom:7px;color:#818378">时间 ${Number.isFinite(time) ? time.toFixed(2) : '—'} s</div>${entries.join('<br>')}`
       },
     },
     xAxis: {
       type: 'value', min: first, max: last > first ? last : first + 1,
-      name: '时间 / s', nameLocation: 'end', nameGap: -39,
-      nameTextStyle: { color: '#91a0aa', fontSize: 9, padding: [27, 0, 0, 0] },
+      name: '时间 / s', nameLocation: 'middle', nameGap: 29,
+      nameTextStyle: { color: '#818378', fontSize: 10 },
       splitNumber: 8, axisLine: { show: false }, axisTick: { show: false },
-      axisLabel: { color: '#94a2ac', fontSize: 10, margin: 11, hideOverlap: true, formatter: value => Number(value.toFixed(2)) },
-      splitLine: { show: true, lineStyle: { color: '#eef2f5', type: 'dashed' } },
+      axisLabel: { color: '#818378', fontSize: 10, margin: 11, hideOverlap: true, formatter: value => Number(value.toFixed(2)) },
+      splitLine: { show: true, lineStyle: { color: '#eaeae1', type: 'dashed' } },
       axisPointer: { label: { show: false } },
     },
     yAxis: {
       type: 'value', scale: props.mode !== 'error', splitNumber: 4,
       name: configuration.value.unit, nameLocation: 'end', nameGap: 19,
-      nameTextStyle: { color: '#899ba7', fontSize: 10, align: 'left', padding: [0, 0, 0, -38] },
+      nameTextStyle: { color: '#818378', fontSize: 10, align: 'left', padding: [0, 0, 0, -38] },
       axisLine: { show: false }, axisTick: { show: false },
-      axisLabel: { color: '#94a2ac', fontSize: 10, margin: 12, formatter: value => Math.abs(value) >= 10000 ? value.toExponential(1) : Number(value.toFixed(3)) },
-      splitLine: { show: true, lineStyle: { color: '#edf1f4', type: 'dashed' } },
+      axisLabel: { color: '#818378', fontSize: 10, margin: 12, formatter: value => Math.abs(value) >= 10000 ? value.toExponential(1) : Number(value.toFixed(3)) },
+      splitLine: { show: true, lineStyle: { color: '#eaeae1', type: 'dashed' } },
     },
     series,
   }, { notMerge: true, lazyUpdate: false })
@@ -212,10 +212,10 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.flight-chart { position: relative; height: 100%; width: 100%; min-height: 190px; background: #fff; }
+.flight-chart { position: relative; height: 100%; width: 100%; min-height: 190px; background: transparent; }
 .flight-chart-canvas { position: absolute; inset: 0; }
-.flight-chart-empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 18px; background: #ffffffed; text-align: center; }
-.empty-wave { height: 38px; color: #a7c5c5; font: 42px/1 monospace; margin-bottom: 10px; }
-.flight-chart-empty strong { font-size: 12px; font-weight: 500; color: #7c909c; }
-.flight-chart-empty p { margin: 8px 0 0; max-width: 360px; font-size: 11px; line-height: 1.7; color: #9ba9b3; }
+.flight-chart-empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 18px; background: #faf9f4ed; text-align: center; }
+.empty-wave { height: 38px; color: #b4bea4; font: 42px/1 monospace; margin-bottom: 10px; }
+.flight-chart-empty strong { font-size: 12px; font-weight: 500; color: #747d65; }
+.flight-chart-empty p { margin: 8px 0 0; max-width: 360px; font-size: 11px; line-height: 1.7; color: #818378; }
 </style>

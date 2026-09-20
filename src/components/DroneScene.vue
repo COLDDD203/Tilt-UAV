@@ -39,8 +39,8 @@ let viewportWidth = 1, viewportHeight = 1, detailRect = null
 let rotorBlades = []
 const worldZ = new THREE.Vector3(0, 0, 1)
 const detailOffset = new THREE.Vector3(1.1, -1.5, .95).normalize().multiplyScalar(.60)
-const detailBackground = new THREE.Color(0xfafbfc)
-const palette = { teal: 0x0fa99a, ink: 0x283944, grid: 0xe2e7eb, orange: 0xf3ac57 }
+const detailBackground = new THREE.Color(0xfaf9f4)
+const palette = { sage: 0x758765, ink: 0x30312c, grid: 0xdeded2, orange: 0xc59f39 }
 
 function finite(value, fallback = 0) {
   const number = Number(value)
@@ -60,7 +60,7 @@ function addMesh(geometry, surface, parent, position = [0, 0, 0]) {
   return mesh
 }
 
-function label(text, color = '#697b87', scale = .35) {
+function label(text, color = '#73766a', scale = .35) {
   const canvas = document.createElement('canvas')
   canvas.width = 256
   canvas.height = 96
@@ -87,8 +87,8 @@ function createDrone() {
   canvas.width = canvas.height = 128
   const ctx = canvas.getContext('2d')
   const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64)
-  gradient.addColorStop(0, 'rgba(34,58,68,0.26)')
-  gradient.addColorStop(1, 'rgba(34,58,68,0)')
+  gradient.addColorStop(0, 'rgba(48,49,44,0.24)')
+  gradient.addColorStop(1, 'rgba(48,49,44,0)')
   ctx.fillStyle = gradient
   ctx.fillRect(0, 0, 128, 128)
   shadow = new THREE.Mesh(new THREE.PlaneGeometry(.45, .45), new THREE.MeshBasicMaterial({
@@ -99,18 +99,18 @@ function createDrone() {
 }
 
 function createEnvironment() {
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x9aabb6, 2.3))
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xa9ab99, 2.3))
   const light = new THREE.DirectionalLight(0xffffff, 3)
   light.position.set(3, -4, 10)
   scene.add(light)
-  const fill = new THREE.DirectionalLight(0xc9e6ed, 1.1)
+  const fill = new THREE.DirectionalLight(0xf0ebd8, 1.1)
   fill.position.set(-4, 8, 6)
   scene.add(fill)
   scene.traverse(object => { if (object.isLight) object.layers.enable(1) })
 
-  floor = addMesh(new THREE.PlaneGeometry(80, 80), material(0xf5f7f9, { metalness: 0 }), scene, [0, 0, -.008])
+  floor = addMesh(new THREE.PlaneGeometry(80, 80), material(0xf1f0e9, { metalness: 0 }), scene, [0, 0, -.008])
   floor.castShadow = false
-  grid = new THREE.GridHelper(40, 80, 0xd5dfe5, palette.grid)
+  grid = new THREE.GridHelper(40, 80, 0xd4d5c8, palette.grid)
   grid.rotation.x = Math.PI / 2
   grid.material.transparent = true
   grid.material.opacity = .78
@@ -143,17 +143,17 @@ function rebuildWalls() {
   walls.name = 'parameterized-passage'
   for (const x of [left - thickness / 2, right + thickness / 2]) {
     const shape = new THREE.BoxGeometry(thickness, endY - startY, height)
-    const wall = addMesh(shape, material(0xb9ced9, { transparent: true, opacity: .13, depthWrite: false, side: THREE.DoubleSide }), walls, [x, (startY + endY) / 2, height / 2])
+    const wall = addMesh(shape, material(0xbec5b1, { transparent: true, opacity: .13, depthWrite: false, side: THREE.DoubleSide }), walls, [x, (startY + endY) / 2, height / 2])
     wall.castShadow = false
     wall.receiveShadow = false
-    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(shape), new THREE.LineBasicMaterial({ color: 0x9aadb9, transparent: true, opacity: .35 }))
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(shape), new THREE.LineBasicMaterial({ color: 0x909984, transparent: true, opacity: .35 }))
     wall.add(edges)
     const top = new THREE.Line(new THREE.BufferGeometry().setFromPoints([
       new THREE.Vector3(x, startY, height), new THREE.Vector3(x, endY, height),
-    ]), new THREE.LineBasicMaterial({ color: 0x92a9b7, transparent: true, opacity: .56 }))
+    ]), new THREE.LineBasicMaterial({ color: 0x87917b, transparent: true, opacity: .56 }))
     walls.add(top)
   }
-  const gap = label(`${(right - left).toFixed(2)} m`, '#8197a5', .22)
+  const gap = label(`${(right - left).toFixed(2)} m`, '#626f55', .22)
   gap.position.set((left + right) / 2, startY - .34, height + .06)
   walls.add(gap)
   walls.visible = props.showWalls
@@ -170,7 +170,7 @@ function rebuildHoverTarget() {
   hoverMarker.name = 'hover-target'
   // These cues stay on the environment layer, outside the aircraft detail camera.
   const surface = new THREE.MeshBasicMaterial({
-    color: palette.teal, transparent: true, opacity: .48,
+    color: palette.sage, transparent: true, opacity: .48,
     side: THREE.DoubleSide, depthWrite: false,
   })
   const ring = new THREE.Mesh(new THREE.RingGeometry(.18, .20, 64), surface)
@@ -184,11 +184,11 @@ function rebuildHoverTarget() {
     new THREE.Vector3(target.x, target.y, .03),
     new THREE.Vector3(target.x, target.y, target.z),
   ]), new THREE.LineDashedMaterial({
-    color: palette.teal, dashSize: .08, gapSize: .08, transparent: true, opacity: .34, depthWrite: false,
+    color: palette.sage, dashSize: .08, gapSize: .08, transparent: true, opacity: .34, depthWrite: false,
   }))
   guide.computeLineDistances()
   hoverMarker.add(guide)
-  const heightLabel = label(`悬停 ${target.z.toFixed(2)} m`, '#299d92', .20)
+  const heightLabel = label(`悬停 ${target.z.toFixed(2)} m`, '#637b50', .20)
   heightLabel.position.set(target.x, target.y, target.z + .30)
   hoverMarker.add(heightLabel)
   scene.add(hoverMarker)
@@ -242,16 +242,16 @@ function rebuildPaths() {
   })
   if (points.length > 1) {
     const geometry = new THREE.BufferGeometry().setFromPoints(points)
-    const full = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0x67c6be, transparent: true, opacity: .3 }))
+    const full = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0xa5b496, transparent: true, opacity: .3 }))
     pathGroup.add(full)
-    elapsedLine = new THREE.Line(geometry.clone(), new THREE.LineBasicMaterial({ color: palette.teal, transparent: true, opacity: .95 }))
+    elapsedLine = new THREE.Line(geometry.clone(), new THREE.LineBasicMaterial({ color: palette.sage, transparent: true, opacity: .95 }))
     pathGroup.add(elapsedLine)
-    const startDot = addMesh(new THREE.SphereGeometry(.045, 16, 12), material(palette.teal), pathGroup)
+    const startDot = addMesh(new THREE.SphereGeometry(.045, 16, 12), material(palette.sage), pathGroup)
     startDot.position.copy(points[0])
   } else elapsedLine = null
   if (referencePoints.length > 1) {
     referenceLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(referencePoints), new THREE.LineDashedMaterial({
-      color: 0x8e9aa6, dashSize: .12, gapSize: .095, transparent: true, opacity: .62,
+      color: 0x9b91ae, dashSize: .12, gapSize: .095, transparent: true, opacity: .62,
     }))
     referenceLine.computeLineDistances()
     referenceLine.visible = props.showReference
@@ -411,8 +411,8 @@ watch(() => props.fitKey, fitCamera)
 onMounted(() => {
   try {
     scene = new THREE.Scene()
-    scene.background = new THREE.Color(0xf5f7f9)
-    scene.fog = new THREE.Fog(0xf5f7f9, 30, 85)
+    scene.background = new THREE.Color(0xf1f0e9)
+    scene.fog = new THREE.Fog(0xf1f0e9, 30, 85)
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'default' })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
     renderer.outputColorSpace = THREE.SRGBColorSpace
@@ -496,39 +496,39 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.drone-viewport { position: relative; width: 100%; height: 100%; min-height: 360px; overflow: hidden; background: #f5f7f9; isolation: isolate; }
+.drone-viewport { position: relative; width: 100%; height: 100%; min-height: 360px; overflow: hidden; background: #f1f0e9; isolation: isolate; }
 .drone-canvas { position: absolute; inset: 0; }
 .drone-canvas :deep(canvas) { display: block; width: 100%; height: 100%; outline: none; touch-action: none; }
-.viewport-heading { position: absolute; top: 21px; left: 23px; display: flex; align-items: center; gap: 8px; color: #596975; font: 500 11px/1.4 inherit; pointer-events: none; font-size: 11px; }
-.viewport-unit { margin-left: 6px; padding-left: 12px; border-left: 1px solid #d6dfe4; font-family: 'JetBrains Mono', 'Consolas', monospace; font-size: 9px; letter-spacing: .8px; color: #93a0aa; }
-.live-dot { height: 6px; width: 6px; border-radius: 50%; background: #94a7b4; }
-.live-dot.playing { background: #11ac9b; box-shadow: 0 0 0 4px #11ac9b12; }
-.viewport-hint { position: absolute; top: 22px; right: 23px; color: #9aa6b1; font-size: 10px; pointer-events: none; }
+.viewport-heading { position: absolute; top: 21px; left: 23px; display: flex; align-items: center; gap: 8px; color: #5c6154; font: 500 11px/1.4 inherit; pointer-events: none; font-size: 11px; }
+.viewport-unit { margin-left: 6px; padding-left: 12px; border-left: 1px solid #d3d5c9; font-family: 'JetBrains Mono', 'Consolas', monospace; font-size: 10px; letter-spacing: .8px; color: #858879; }
+.live-dot { height: 6px; width: 6px; border-radius: 50%; background: #999e8b; }
+.live-dot.playing { background: #758765; box-shadow: 0 0 0 4px #75876512; }
+.viewport-hint { position: absolute; top: 22px; right: 23px; color: #7f8376; font-size: 10px; pointer-events: none; }
 .viewport-hint span { margin: 0 6px; }
-.drone-detail { position: absolute; top: 52px; right: 20px; width: 190px; height: 140px; border: 1px solid #dce5eb; border-radius: 7px; box-shadow: 0 3px 13px #46657708; pointer-events: none; overflow: hidden; }
-.drone-detail-heading { height: 28px; display: flex; align-items: center; justify-content: space-between; padding: 0 11px; background: #ffffffed; color: #8d9da8; font-size: 9px; border-bottom: 1px solid #eaf0f3; }
-.drone-detail-angle { font-family: 'Consolas', monospace; color: #9ba8b3; }
-.drone-detail-angle b { margin-left: 3px; font-weight: 500; color: #0fa293; font-variant-numeric: tabular-nums; }
+.drone-detail { position: absolute; top: 52px; right: 20px; width: 190px; height: 140px; border: 1px solid #dadbd0; border-radius: 16px; box-shadow: 0 3px 13px #34372a08; pointer-events: none; overflow: hidden; }
+.drone-detail-heading { height: 28px; display: flex; align-items: center; justify-content: space-between; padding: 0 11px; background: #faf9f4f2; color: #74796b; font-size: 10px; border-bottom: 1px solid #e7e7dc; }
+.drone-detail-angle { font-family: 'Consolas', monospace; color: #818674; }
+.drone-detail-angle b { margin-left: 3px; font-weight: 500; color: #637b50; font-variant-numeric: tabular-nums; }
 .drone-detail-canvas { height: calc(100% - 28px); }
 .viewport-bottom { position: absolute; left: 23px; right: 23px; bottom: 19px; display: flex; align-items: center; justify-content: space-between; gap: 10px; pointer-events: none; }
-.viewport-coordinates { display: flex; gap: 17px; color: #4b6170; font-family: 'JetBrains Mono', 'Consolas', monospace; font-size: 10px; font-variant-numeric: tabular-nums; }
+.viewport-coordinates { display: flex; gap: 17px; color: #4f5945; font-family: 'JetBrains Mono', 'Consolas', monospace; font-size: 10px; font-variant-numeric: tabular-nums; }
 .viewport-coordinates span { display: flex; align-items: center; gap: 7px; }
-.viewport-coordinates i { font: normal 10px 'Consolas', monospace; color: #93a1ae; }
-.viewport-model-note { color: #9aa6b1; font-size: 9px; }
-.viewport-message { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #536978; background: #f5f7f9dc; padding: 35px; text-align: center; }
-.viewport-message-icon { display: block; font-size: 42px; color: #91c7c2; margin-bottom: 14px; }
+.viewport-coordinates i { font: normal 10px 'Consolas', monospace; color: #858b7a; }
+.viewport-model-note { color: #7f8376; font-size: 10px; }
+.viewport-message { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #5c6651; background: #f1f0e9dc; padding: 35px; text-align: center; }
+.viewport-message-icon { display: block; font-size: 42px; color: #a5b496; margin-bottom: 14px; }
 .viewport-message strong { font-size: 15px; font-weight: 600; }
-.viewport-message p { max-width: 330px; margin: 10px 0; font-size: 12px; line-height: 1.8; color: #8394a1; }
+.viewport-message p { max-width: 330px; margin: 10px 0; font-size: 12px; line-height: 1.8; color: #7c8473; }
 @media (max-width: 640px) {
   .drone-viewport { min-height: 320px; }
   .viewport-heading { left: 15px; top: 16px; }
-  .viewport-hint { right: 15px; top: 17px; font-size: 9px; }
+  .viewport-hint { right: 15px; top: 17px; font-size: 10px; }
   .viewport-unit { display: none; }
   .drone-detail { top: 44px; right: 14px; width: 126px; height: 110px; }
-  .drone-detail-heading { padding: 0 8px; font-size: 8px; height: 25px; }
+  .drone-detail-heading { padding: 0 8px; font-size: 10px; height: 25px; }
   .drone-detail-canvas { height: calc(100% - 25px); }
   .viewport-bottom { left: 15px; right: 15px; bottom: 15px; }
   .viewport-coordinates { gap: 11px; }
-  .viewport-model-note { font-size: 8px; }
+  .viewport-model-note { font-size: 9px; }
 }
 </style>

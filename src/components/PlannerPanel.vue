@@ -60,9 +60,10 @@ async function calculate() {
   <section class="panel planner-panel" aria-label="参数化飞行设置">
     <div class="planner-heading">
       <h2><SlidersHorizontal :size="16"/>飞行参数</h2>
-      <div class="planner-presets" aria-label="参数预设">
-        <button v-for="item in presets" :key="item.name" type="button" :disabled="busy" @click="preset(item)">{{ item.name }}</button>
-      </div>
+      <span class="planner-heading-mark" aria-hidden="true">01 / PLAN</span>
+    </div>
+    <div class="planner-presets" aria-label="参数预设">
+      <button v-for="item in presets" :key="item.name" type="button" :disabled="busy" @click="preset(item)">{{ item.name }}</button>
     </div>
     <form @submit.prevent="calculate">
       <fieldset :disabled="busy" class="planner-fields">
@@ -99,56 +100,60 @@ async function calculate() {
       </div>
       <p v-if="Math.abs(result.transitHeight - result.targetHeight) > .01" class="height-explanation">以 {{ f(result.transitHeight) }} m 穿越，出通道后调整至 {{ f(result.targetHeight) }} m 悬停。</p>
     </div>
-    <p class="planner-explainer"><Info :size="12"/>悬停 3 秒后自动降落 · 运动学演示，非闭环仿真。</p>
+    <p class="planner-explainer"><Info :size="12"/><span>悬停 3 秒后自动降落<br/>运动学演示 · 非闭环仿真</span></p>
   </section>
 </template>
 
 <style scoped>
-.planner-panel{margin-bottom:18px;overflow:visible;padding:18px 22px 13px}
-.planner-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
-.planner-heading h2{display:flex;align-items:center;gap:8px;margin:0;font-size:13px;font-weight:600;color:#456455;white-space:nowrap}
-.planner-heading h2 svg{color:#79a08c}
-.planner-presets{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-.planner-presets button{background:#f6f9f7;border:1px solid #e5ece6;border-radius:5px;color:#759382;font-size:10px;padding:5px 9px;cursor:pointer;transition:background .15s,border-color .15s}
-.planner-presets button:hover{color:#20846c;background:#eaf5ee;border-color:#cddfd3}
-.planner-presets button:focus-visible{outline:2px solid #62b49e;outline-offset:2px}
+.planner-panel{margin:0;overflow:visible;padding:18px 20px;border:1px solid #e9e7df;border-radius:24px;background:#fffefa;box-shadow:none}
+.planner-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:13px}
+.planner-heading h2{display:flex;align-items:center;gap:9px;margin:0;font-size:15px;font-weight:600;letter-spacing:-.3px;color:#292a27;white-space:nowrap}
+.planner-heading h2 svg{color:#67685e}
+.planner-heading-mark{font-size:9px;font-weight:500;letter-spacing:1px;color:#88897e;white-space:nowrap}
+.planner-presets{display:flex;align-items:center;gap:5px;margin-bottom:14px}
+.planner-presets button{flex:1;min-width:0;background:#f2f1eb;border:1px solid transparent;border-radius:100px;color:#606258;font:inherit;font-size:10px;line-height:1.4;padding:6px 4px;white-space:nowrap;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.planner-presets button:hover{color:#292a27;background:#e8e3d0;border-color:#ded7bd}
+.planner-presets button:focus-visible{outline:2px solid #292a27;outline-offset:2px}
 .planner-presets button:disabled{opacity:.55;cursor:wait}
 .planner-fields{border:0;margin:0;padding:0;min-width:0}
-.planner-main-inputs{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 166px;gap:22px;align-items:end}
+.planner-main-inputs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:end}
 .planner-field{min-width:0}
-.planner-field>label{display:flex;align-items:baseline;justify-content:space-between;gap:7px;color:#5b7767;font-size:11px;margin-bottom:8px}
-.planner-field label small{font-size:9px;color:#9aaca0;font-weight:400;white-space:nowrap}
-.parameter-input{height:41px;display:flex;align-items:center;border:1px solid #dce6de;border-radius:6px;overflow:hidden;background:#fcfefd;transition:border-color .15s,box-shadow .15s}
-.parameter-input:focus-within{border-color:#62b49e;box-shadow:0 0 0 3px #1b997512}
-.parameter-input input{border:0;outline:0;background:none;min-width:0;width:100%;height:100%;padding:0 12px;color:#355d4d;font:20px Consolas,monospace;font-variant-numeric:tabular-nums}
-.parameter-input>span{font-size:10px;color:#8fa395;padding-right:12px;white-space:nowrap}
-.calculate-button{height:41px!important;width:100%;font-size:12px}
-.planner-advanced{margin-top:13px}
-.planner-advanced summary{display:flex;align-items:center;gap:5px;width:fit-content;padding:3px 0;color:#8ba292;font-size:10px;cursor:pointer;list-style:none}
+.planner-field>label{display:flex;flex-direction:column;gap:2px;color:#53564e;font-size:11px;line-height:1.4;margin-bottom:6px}
+.planner-field label small{font-size:9px;color:#85877d;font-weight:400;white-space:nowrap}
+.parameter-input{height:46px;display:flex;align-items:center;border:1px solid #e4e3db;border-radius:13px;overflow:hidden;background:#f7f6f1;transition:border-color .15s,box-shadow .15s}
+.parameter-input:focus-within{border-color:#a9a58e;box-shadow:0 0 0 3px #f5dc7545}
+.parameter-input input{border:0;outline:0;background:none;min-width:0;width:100%;height:100%;padding:0 0 0 12px;color:#292a27;font:500 24px 'Segoe UI',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-1px}
+.parameter-input>span{font-size:10px;color:#85877d;padding:0 10px 0 4px;white-space:nowrap}
+.calculate-button{grid-column:1/-1;height:40px!important;width:100%;border:1px solid #f5dc75!important;border-radius:100px!important;background:#f5dc75!important;color:#292a27!important;font-size:12px;font-weight:600;letter-spacing:.2px;box-shadow:none!important;transition:background .15s,transform .15s}
+.calculate-button:hover{background:#efcf5d!important;border-color:#efcf5d!important;transform:translateY(-1px)}
+.calculate-button:focus-visible{outline:2px solid #292a27;outline-offset:3px}
+.calculate-button :deep(span){display:flex;align-items:center;justify-content:center;gap:8px}
+.planner-advanced{margin-top:7px}
+.planner-advanced summary{display:flex;align-items:center;justify-content:space-between;padding:5px 1px;color:#73766b;font-size:10px;cursor:pointer;list-style:none}
 .planner-advanced summary::-webkit-details-marker{display:none}
+.planner-advanced summary:focus-visible{outline:2px solid #a9a58e;outline-offset:4px;border-radius:3px}
 .planner-advanced summary>svg{transition:transform .2s}
 .planner-advanced[open] summary>svg{transform:rotate(180deg)}
-.planner-advanced-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;padding:16px 0 4px}
-.small-input{height:35px}.small-input input{font-size:16px}
-.planner-explainer{display:flex;align-items:center;gap:5px;margin:10px 0 0;color:#a0afa5;font-size:9px;line-height:1.6}
-.planner-explainer svg{flex-shrink:0}
-.planner-result{display:flex;align-items:center;flex-wrap:wrap;gap:13px 24px;margin-top:13px;background:#f2f8f4;border:1px solid #e2ede5;border-radius:6px;padding:12px 15px}
-.planner-result-title{display:flex;gap:6px;align-items:center;color:#559978;white-space:nowrap}
-.planner-result-title strong{font-size:11px;font-weight:500}
-.planner-result-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;flex:1}
-.planner-result-grid>div{display:flex;align-items:baseline;gap:8px;white-space:nowrap}
-.planner-result-grid small{font-size:9px;color:#8aa18f}
-.planner-result-grid strong{font:17px Consolas,monospace;color:#4b7962;white-space:nowrap}
-.planner-result-grid em{font-size:9px;color:#8da793;font-style:normal;margin-left:3px}
-.height-explanation{width:100%;margin:0;padding-top:9px;border-top:1px solid #e0ebe2;font-size:10px;color:#7d9c87;line-height:1.7}
-.planner-error{display:flex;align-items:flex-start;gap:9px;background:#fff8f2;border:1px solid #f1dfcc;border-radius:6px;padding:12px 15px;margin-top:13px;color:#b77f45}
+.planner-advanced-grid{display:grid;grid-template-columns:1fr;gap:12px;padding:13px 0 5px}
+.planner-advanced-grid .planner-field>label{flex-direction:row;align-items:baseline;justify-content:space-between;gap:8px}
+.small-input{height:39px;border-radius:11px}.small-input input{font-size:18px;letter-spacing:0}
+.planner-explainer{display:flex;align-items:flex-start;gap:7px;margin:8px 0 0;padding-top:8px;border-top:1px solid #eeede6;color:#85877c;font-size:9px;line-height:1.55}
+.planner-explainer svg{flex-shrink:0;margin-top:2px}
+.planner-result{margin-top:11px;background:#e9efdf;border:0;border-radius:16px;padding:12px 14px}
+.planner-result-title{display:flex;gap:7px;align-items:center;color:#536044;white-space:nowrap}
+.planner-result-title strong{font-size:11px;font-weight:600}
+.planner-result-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 12px;margin-top:10px}
+.planner-result-grid>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.planner-result-grid small{font-size:9px;color:#717e64}
+.planner-result-grid strong{font:500 20px 'Segoe UI',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.7px;color:#3d4932;white-space:nowrap}
+.planner-result-grid em{font-size:9px;font-weight:400;color:#717e64;font-style:normal;letter-spacing:0;margin-left:4px}
+.height-explanation{margin:10px 0 0;padding-top:8px;border-top:1px solid #d8e1cc;font-size:10px;color:#6c795e;line-height:1.7}
+.planner-error{display:flex;align-items:flex-start;gap:8px;background:#fff1e5;border:1px solid #f1dbca;border-radius:14px;padding:14px;margin-top:15px;color:#936038}
 .planner-error>svg{flex-shrink:0;margin-top:1px}
-.planner-error strong{font-size:11px;font-weight:500}
-.planner-error p{margin:5px 0 0;font-size:11px;line-height:1.7}
-.planner-pending{display:flex;align-items:center;gap:7px;margin-top:13px;border:1px solid #e5edf0;background:#f5f8fa;border-radius:6px;padding:9px 12px;font-size:10px;color:#8b9faa;line-height:1.7}
-.planner-pending svg{flex-shrink:0}
-@media(max-width:1200px){.planner-result-grid>div{display:block}.planner-result-grid strong{display:block;margin-top:5px}.planner-main-inputs{gap:17px}.planner-field label small{font-size:8px}}
-@media(max-width:760px){.planner-panel{padding:15px 16px 12px}.planner-heading{flex-wrap:wrap;gap:12px;margin-bottom:16px}.planner-heading h2{font-size:12px}.planner-presets{gap:6px}.planner-presets button{font-size:9px;padding:4px 7px}.planner-main-inputs{grid-template-columns:1fr 1fr;gap:13px}.calculate-button{grid-column:1/-1}.planner-field>label{font-size:10px;flex-wrap:wrap;gap:4px}.planner-field label small{font-size:8px}.planner-advanced-grid{grid-template-columns:1fr;gap:13px}.planner-advanced-grid label{justify-content:flex-start;gap:12px}.planner-result{gap:12px;padding:12px}.planner-result-title{width:100%}.planner-result-grid{gap:10px}.planner-result-grid small{font-size:8px}.planner-result-grid strong{font-size:16px}.planner-result-grid em{font-size:8px}.planner-explainer{font-size:8px}.planner-error{padding:12px}}
-@media(max-width:380px){.planner-result-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.planner-heading{gap:10px}.planner-presets button{font-size:8px}}
+.planner-error strong{font-size:11px;font-weight:600}
+.planner-error p{margin:6px 0 0;font-size:10px;line-height:1.8}
+.planner-pending{display:flex;align-items:flex-start;gap:7px;margin-top:15px;border:1px solid #e5dfed;background:#f0edf6;border-radius:13px;padding:11px 12px;font-size:10px;color:#796c8d;line-height:1.7}
+.planner-pending svg{flex-shrink:0;margin-top:2px}
+@media(max-width:760px){.planner-panel{padding:19px 21px}.planner-main-inputs{gap:12px}.planner-presets button{font-size:11px}.planner-field>label{font-size:12px}.planner-field label small{font-size:10px}.parameter-input{height:48px}.parameter-input input{font-size:25px}.planner-explainer{font-size:10px}.planner-advanced summary{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.planner-presets button,.parameter-input,.calculate-button,.planner-advanced summary>svg{transition:none}.calculate-button:hover{transform:none}}
 </style>
-

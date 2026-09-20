@@ -147,19 +147,20 @@ onBeforeUnmount(() => { cancelAnimationFrame(animationId); window.removeEventLis
         <span class="brand-icon"><svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="m12 12 16 16m0-16L12 28" stroke="currentColor" stroke-width="2"/><circle v-for="p in [[11,11],[29,11],[11,29],[29,29]]" :key="p.join()" :cx="p[0]" :cy="p[1]" r="6" stroke="currentColor" stroke-width="1.7"/><rect x="17" y="15" width="6" height="10" rx="2" fill="currentColor"/></svg></span>
         <span class="brand-word">Tilt<span>Lab</span><small>倾转飞行实验室</small></span>
       </a>
+      <div class="nav-caption">工作空间 <span>WORKSPACE</span></div>
       <nav aria-label="主导航">
-        <button v-for="item in navigation" :key="item.id" :class="['nav-item', { active: page === item.id }]" @click="setPage(item.id)">
+        <button v-for="item in navigation" :key="item.id" :aria-label="item.label" :title="item.label" :class="['nav-item', { active: page === item.id }]" @click="setPage(item.id)">
           <component :is="item.icon" :size="18" :stroke-width="1.7"/><span>{{ item.label }}</span><ChevronRight v-if="page === item.id" :size="14" class="nav-arrow"/>
         </button>
       </nav>
-      <div class="sidebar-bottom"><div class="local-status"><span class="status-dot"/><div><strong>本地演示模式</strong></div></div><button class="nav-item guide-nav" :class="{ active: page === 'guide' }" @click="setPage('guide')"><CircleHelp :size="18"/><span>使用指南</span><ArrowUpRight :size="14" class="nav-arrow"/></button><div class="sidebar-version">TiltLab <span>v1.2</span></div></div>
+      <div class="sidebar-bottom"><div class="sidebar-lab-mark" aria-hidden="true"><svg viewBox="0 0 160 110" fill="none"><ellipse cx="80" cy="55" rx="65" ry="24" transform="rotate(-30 80 55)"/><ellipse cx="80" cy="55" rx="65" ry="24" transform="rotate(30 80 55)"/><circle cx="80" cy="55" r="9"/><circle cx="128" cy="28" r="4"/></svg><span>EXPLORE EVERY ANGLE</span></div><div class="local-status"><span class="status-dot"/><div><strong>浏览器本地计算</strong></div></div><button class="nav-item guide-nav" aria-label="使用指南" title="使用指南" :class="{ active: page === 'guide' }" @click="setPage('guide')"><CircleHelp :size="18"/><span>使用指南</span><ArrowUpRight :size="14" class="nav-arrow"/></button><div class="sidebar-version">TiltLab <span>FLIGHT STUDIO</span></div></div>
     </aside>
 
     <div class="main-shell">
       <header class="topbar"><div class="breadcrumb"><span>无人机控制实验</span><ChevronRight :size="13"/><strong>{{ navigation.find(n => n.id === page)?.label || '使用指南' }}</strong></div><div class="topbar-right"><span class="offline-pill"><span class="status-dot"/>{{ isPlanned ? '参数化规划' : '离线回放' }}</span></div></header>
-      <main>
+      <main :class="{ 'workspace-page': page === 'workspace' }">
         <div class="page-heading">
-          <h1>{{ page === 'workspace' ? '可倾转四旋翼飞行实验' : page === 'analysis' ? '数据分析' : page === 'records' ? '实验记录' : '使用指南' }}</h1>
+          <div><span class="page-kicker">TILTLAB <span>/</span> {{ page === 'workspace' ? 'FLIGHT WORKSPACE' : page === 'analysis' ? 'FLIGHT ANALYTICS' : page === 'records' ? 'FLIGHT RECORDS' : 'GETTING STARTED' }}</span><h1>{{ page === 'workspace' ? '让每一度倾转，清晰可见。' : page === 'analysis' ? '数据分析' : page === 'records' ? '实验记录' : '使用指南' }}</h1><p v-if="page === 'workspace'">可倾转四旋翼 · 参数规划与飞行回放</p></div>
           <div class="heading-actions"><ElButton v-if="page !== 'guide'" @click="infoOpen = true"><Info :size="15"/>数据说明</ElButton><ElButton type="primary" :loading="importBusy" @click="fileInput?.click()"><Upload :size="15"/>导入数据</ElButton></div>
         </div>
         <input ref="fileInput" class="visually-hidden" type="file" accept=".json,application/json" aria-label="导入仿真 JSON 数据" @change="importFile" />
