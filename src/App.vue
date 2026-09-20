@@ -5,6 +5,7 @@ import { Activity, ArrowDownToLine, ArrowLeft, ArrowRight, ArrowUpRight, Box, Ch
 import DroneScene from './components/DroneScene.vue'
 import FlightChart from './components/FlightChart.vue'
 import PlannerPanel from './components/PlannerPanel.vue'
+import AirframeInspector from './components/AirframeInspector.vue'
 import { PASSAGE } from './lib/droneModel.js'
 import recorded from '../public/data/recorded.json'
 import { downloadText, errorMagnitude, sampleAt, summarize, toCsv, validateDataset } from './lib/data.js'
@@ -40,6 +41,7 @@ const presenting = ref(false)
 const importBusy = ref(false)
 const navigation = [
   { id: 'workspace', label: '实验工作台', icon: LayoutDashboard },
+  { id: 'airframe', label: '机体姿态', icon: Rotate3d },
   { id: 'analysis', label: '数据分析', icon: ChartNoAxesCombined },
   { id: 'records', label: '实验记录', icon: FolderOpen },
 ]
@@ -129,6 +131,7 @@ async function importFile(event) {
 function exportJson() { downloadText(JSON.stringify(activeData.value, null, 2), 'tiltlab-flight.json') }
 function exportCsv() { downloadText(toCsv(samples.value), 'tiltlab-flight.csv', 'text/csv;charset=utf-8') }
 function keydown(event) {
+  if (page.value === 'airframe') return
   if (['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(event.target.tagName) || event.target.isContentEditable || event.target.closest('[role="slider"], [role="combobox"], .el-dialog') || infoOpen.value) return
   if (event.code === 'Space') { event.preventDefault(); togglePlay() }
   if (event.code === 'ArrowRight') { event.preventDefault(); seek(currentTime.value + 1) }
@@ -136,7 +139,12 @@ function keydown(event) {
   if (event.code === 'Escape') presenting.value = false
 }
 function useRecord(id) { selectDataset(id); page.value = 'workspace' }
-function setPage(value) { page.value = value; if (value === 'guide' || value === 'records') playing.value = false }
+function setPage(value) {
+  const inspectionSwitch = value === 'airframe' || page.value === 'airframe'
+  page.value = value
+  if (value === 'guide' || value === 'records' || value === 'airframe') playing.value = false
+  if (inspectionSwitch) window.scrollTo(0, 0)
+}
 onMounted(() => { currentTime.value = startTime.value; animationId = requestAnimationFrame(tick); window.addEventListener('keydown', keydown) })
 onBeforeUnmount(() => { cancelAnimationFrame(animationId); window.removeEventListener('keydown', keydown) })
 </script>
@@ -158,12 +166,14 @@ onBeforeUnmount(() => { cancelAnimationFrame(animationId); window.removeEventLis
     </aside>
 
     <div class="main-shell">
-      <header class="topbar"><div class="breadcrumb"><span>无人机控制实验</span><ChevronRight :size="13"/><strong>{{ navigation.find(n => n.id === page)?.label || '使用指南' }}</strong></div><div class="topbar-right"><span class="offline-pill"><span class="status-dot"/>{{ isPlanned ? '参数化规划' : '离线回放' }}</span></div></header>
+      <header class="topbar"><div class="breadcrumb"><span>无人机控制实验</span><ChevronRight :size="13"/><strong>{{ navigation.find(n => n.id === page)?.label || '使用指南' }}</strong></div><div class="topbar-right"><span class="offline-pill"><span class="status-dot"/>{{ page === 'airframe' ? '机体姿态预览' : isPlanned ? '参数化规划' : '离线回放' }}</span></div></header>
       <main :class="{ 'workspace-page': page === 'workspace' }">
         <div class="page-heading">
-          <div><span class="page-kicker">TILTLAB <span>/</span> {{ page === 'workspace' ? 'FLIGHT WORKSPACE' : page === 'analysis' ? 'FLIGHT ANALYTICS' : page === 'records' ? 'FLIGHT RECORDS' : 'GETTING STARTED' }}</span><h1>{{ page === 'workspace' ? '让每一度倾转，清晰可见。' : page === 'analysis' ? '数据分析' : page === 'records' ? '实验记录' : '使用指南' }}</h1><p v-if="page === 'workspace'">可倾转四旋翼 · 参数规划与飞行回放</p></div>
-          <div class="heading-actions"><ElButton v-if="page !== 'guide'" @click="infoOpen = true"><Info :size="15"/>数据说明</ElButton><ElButton type="primary" :loading="importBusy" @click="fileInput?.click()"><Upload :size="15"/>导入数据</ElButton></div>
+          <div><span class="page-kicker">TILTLAB <span>/</span> {{ page === 'workspace' ? 'FLIGHT WORKSPACE' : page === 'airframe' ? 'AIRFRAME INSPECTOR' : page === 'analysis' ? 'FLIGHT ANALYTICS' : page === 'records' ? 'FLIGHT RECORDS' : 'GETTING STARTED' }}</span><h1>{{ page === 'workspace' ? '让每一度倾转，清晰可见。' : page === 'airframe' ? '换个角度，读懂机体。' : page === 'analysis' ? '数据分析' : page === 'records' ? '实验记录' : '使用指南' }}</h1><p v-if="page === 'workspace'">可倾转四旋翼 · 参数规划与飞行回放</p><p v-else-if="page === 'airframe'">机架倾转 · 整机姿态 · 机体尺寸</p></div>
+          <div v-if="page !== 'airframe'" class="heading-actions"><ElButton v-if="page !== 'guide'" @click="infoOpen = true"><Info :size="15"/>数据说明</ElButton><ElButton type="primary" :loading="importBusy" @click="fileInput?.click()"><Upload :size="15"/>导入数据</ElButton></div>
+          <div v-else class="heading-actions"><ElButton @click="setPage('workspace')"><ArrowLeft :size="15"/>返回实验工作台</ElButton></div>
         </div>
+        <KeepAlive><AirframeInspector v-if="page === 'airframe'"/></KeepAlive>
         <input ref="fileInput" class="visually-hidden" type="file" accept=".json,application/json" aria-label="导入仿真 JSON 数据" @change="importFile" />
 
         <section v-if="page === 'workspace'" class="record-toolbar" aria-label="当前演示记录">
@@ -212,10 +222,10 @@ onBeforeUnmount(() => { cancelAnimationFrame(animationId); window.removeEventLis
           <section class="record-grid"><article v-for="d in datasets" :key="d.id" class="panel record-card"><div class="record-card-top"><span class="record-file-icon"><FileJson :size="24"/></span><span class="subtle-tag" :class="{ 'green-tag': activeId === d.id }">{{ activeId === d.id ? '当前实验' : '可回放' }}</span></div><h2>{{ d.id === 'recorded' ? '倾转穿越 · 配套实验' : d.data.metadata.title }}</h2><p>{{ d.id === 'recorded' ? 'MATLAB 图文件记录，包含位置、姿态、倾转角和旋翼转速。' : d.data.metadata.description || '从本地导入的仿真结果。' }}</p><div class="record-meta"><span>{{ d.data.samples.length.toLocaleString() }} 采样点</span><span>{{ f(d.data.samples.at(-1).t - d.data.samples[0].t, 1) }} s</span></div><button class="record-open" @click="useRecord(d.id)">打开实验 <ArrowRight :size="16"/></button></article><button class="record-import" @click="fileInput?.click()"><span><Upload :size="25"/></span><strong>添加实验记录</strong><small>导入 MATLAB 导出的 JSON 文件</small></button></section><p class="page-note"><Info :size="15"/>导入记录保留在当前页面会话中。刷新前可导出 JSON 保存；不会上传到外部服务器。</p>
         </template>
 
-        <template v-else>
+        <template v-else-if="page === 'guide'">
           <section class="guide-hero panel"><div class="guide-icon"><GraduationCap :size="32"/></div><div><span class="eyebrow">GETTING STARTED</span><h2>先复现仿真，再讲清楚你的实验。</h2><p>TiltLab 将现有 MATLAB / Simulink 结果转为可交互的三维回放。位置、姿态和曲线共享同一条时间轴，适合课堂讲解、项目答辩与研究记录。</p></div></section><div class="guide-grid"><article class="panel guide-card"><span class="guide-step">01</span><h2>运行与导出</h2><p>在 MATLAB 中完成仿真，将时间、位置、姿态和倾转角整理成等长列向量。使用项目内的 <code>matlab/export_demo_data.m</code> 导出标准 JSON。</p><div class="guide-tip">单位明确：位置用 m，时间用 s；输入角度统一用 rad 或 deg。</div></article><article class="panel guide-card"><span class="guide-step">02</span><h2>导入与检查</h2><p>点击“导入数据”，选择 JSON。系统检查字段、数值和时间顺序，再将角度统一换算。请先核对起点、终点和坐标轴方向。</p><div class="guide-tip">每次最多 100,000 点，35 MB；导入处理全程在浏览器内完成。</div></article><article class="panel guide-card"><span class="guide-step">03</span><h2>回放与分析</h2><p>播放或拖动时间轴观察机架倾转，切换视角与曲线类型。在“数据分析”页面查看全程指标，并导出完整 CSV。</p><div class="guide-tip"><kbd>Space</kbd> 播放 / 暂停　<kbd>←</kbd> <kbd>→</kbd> 前后 1 秒</div></article></div><section class="panel guide-details"><h2>参数化飞行怎么用</h2><p>在实验工作台直接输入狭缝净宽与目标悬停高度，再点击“计算并演示”。可在“更多参数”调整最大倾转角、每侧预留间隙与峰值速度。0.40 m 狭缝通常可以水平通过；0.24 m 狭缝配合默认余量，会自动计算出明显的倾转动作。</p><p>系统按固定机体和完整桨盘尺寸，在允许范围内以 0.25° 分辨率寻找最小可行倾转角。穿越期间机头沿通道对齐，宽度不够时提示无法通过。目标高度过高时，先在通道有效高度内穿越，再于出口外上升至目标，悬停 3 秒后平稳降落。生成的方案可从“数据说明”导出 JSON，后续导入会同时恢复通道和任务阶段。</p><p>在页面顶部的“当前记录”中，可随时选择配套实验或已生成方案进行回放。　这些是浏览器生成的几何与运动学方案，不是论文控制器的闭环仿真。规划净距可直接观察，跟踪误差和旋翼转速不作虚构。</p></section><section class="panel guide-details"><h2>这个版本支持什么</h2><div class="scope-grid"><div><h3><Check :size="17"/>现在可以使用</h3><p>参数化狭缝与悬停高度、自动倾角计算、三维轨迹、曲线联动、实验导入与结果导出。构建后可在本地离线使用。</p></div><div><h3><Settings2 :size="17"/>后续可扩展</h3><p>网页调参运行 Simulink、故障注入与多算法对比需要接入实际可运行的模型及后端。参数化模式在浏览器中计算几何可行倾角与平滑航迹；真实闭环控制仿真仍需后端模型。</p></div></div><h3>坐标与模型约定</h3><p>世界坐标 Z 轴向上；原始姿态采用 Rz(yaw) · Ry(pitch) · Rx(roll)。机头沿局部 +Y，正倾转使右侧降低，旋翼反向补偿。内置穿缝示意将显示航向校准 −60° 以对齐通道，原始姿态读数与曲线保持不变。三维机体按示意比例绘制，参数化模式检查当前几何包络与规划通道的净距；结果不代表实机或动力学通过性验证。</p><ElButton @click="infoOpen = true"><Info :size="15"/>查看内置实验数据说明</ElButton></section>
         </template>
-        <footer class="page-footer"><span><span class="status-dot"/>{{ isPlanned ? '浏览器几何与运动学规划' : 'MATLAB / Simulink 仿真结果可视化' }}</span><span>TiltLab · 本地演示</span></footer>
+        <footer class="page-footer"><span><span class="status-dot"/>{{ page === 'airframe' ? '独立机体姿态展示' : isPlanned ? '浏览器几何与运动学规划' : 'MATLAB / Simulink 仿真结果可视化' }}</span><span>TiltLab · 本地演示</span></footer>
       </main>
     </div>
     <ElDialog v-model="infoOpen" title="实验数据来源与说明" width="640px" class="source-dialog" :close-on-click-modal="false"><div class="dialog-record"><Database :size="21"/><div><strong>{{ metadata.title }}</strong><span>{{ samples.length.toLocaleString() }} 点 · {{ f(startTime, 1) }}–{{ f(endTime, 1) }} s · 位置 m / 角度 rad</span></div></div><p>{{ metadata.description }}</p><template v-if="isOriginal"><h3>原始材料</h3><p>来自“倾转四旋翼无人机(1).zip”中的 figure1–figure8.fig。使用已保存的曲线，没有重新运行仿真。原位置图部分通道与误差图矛盾，当前轨迹依据模型中的误差定义和参考轨迹重建。</p></template><h3>阅读与演示时请注意</h3><ul class="limitation-list"><li v-for="(note, i) in limitations" :key="i">{{ note }}</li><li>{{ isPlanned ? '规划按显示机体及完整旋翼包络检查几何净距，未进行动力学验证。' : '三维机体及旋翼自转为示意，记录回放不执行在线碰撞控制。' }}</li><li>播放速度只改变演示快慢，不改变数据；页面未接入在线 MATLAB 计算。</li></ul><p class="dialog-footnote">导出 JSON 包含完整 metadata 来源说明。姿态显示单位为 °，CSV 与 JSON 姿态单位为 rad。</p><template #footer><ElButton @click="exportJson"><ArrowDownToLine :size="15"/>导出完整 JSON</ElButton><ElButton type="primary" @click="infoOpen = false">了解，开始探索</ElButton></template></ElDialog>

@@ -39,7 +39,13 @@ function beam(a, b, radius, surface, parent) {
   return object
 }
 
-export function createDroneModel() {
+export function createDroneModel(dimensions = DRONE_DIMENSIONS) {
+  // Custom dimensions are used only by the independent aircraft inspector.
+  // The flight demonstration continues to use the original MATLAB geometry.
+  const modelDimensions = Object.freeze({ ...DRONE_DIMENSIONS, ...dimensions })
+  for (const [key, value] of Object.entries(modelDimensions)) {
+    if (!Number.isFinite(value) || value <= 0) throw new RangeError(`Invalid aircraft dimension: ${key}`)
+  }
   const drone = new THREE.Group(), airframe = new THREE.Group()
   drone.name = 'aircraft-metres'
   airframe.name = 'tilting-frame'
@@ -49,19 +55,21 @@ export function createDroneModel() {
   const body = material(0xf8fafb, { roughness: .32, metalness: .32 })
   const teal = material(0x0fa99a)
   const colors = [0x13ab9d, 0xf1ad5d, 0xf1ad5d, 0x13ab9d]
-  const { armHalfX: x, armHalfY: y, propellerRadius, motorRadius, motorHeight, bodyHeight } = DRONE_DIMENSIONS
+  const { armHalfX: x, armHalfY: y, propellerRadius, motorRadius, motorHeight, bodyHeight } = modelDimensions
+  const lengthScale = y / DRONE_DIMENSIONS.armHalfY
+  const propellerScale = propellerRadius / DRONE_DIMENSIONS.propellerRadius
 
   // Central longitudinal frame and two transverse arms follow the MATLAB H frame.
-  mesh(new THREE.BoxGeometry(.024, 2 * y + .020, bodyHeight), carbon, airframe)
+  mesh(new THREE.BoxGeometry(.024, 2 * y + .020 * lengthScale, bodyHeight), carbon, airframe)
   const shell = mesh(new THREE.SphereGeometry(1, 28, 18), body, airframe, [0, 0, .011])
-  shell.scale.set(.022, .072, .017)
-  mesh(new THREE.BoxGeometry(.008, .070, .002), teal, airframe, [0, 0, .028])
+  shell.scale.set(.022, .072 * lengthScale, .017)
+  mesh(new THREE.BoxGeometry(.008, .070 * lengthScale, .002), teal, airframe, [0, 0, .028])
   for (const armY of [-y, y]) {
     mesh(new THREE.BoxGeometry(2 * x + .020, .012, .008), carbonLight, airframe, [0, armY, 0])
   }
-  const heading = mesh(new THREE.ConeGeometry(.010, .025, 3), teal, airframe, [0, .077, .014])
+  const heading = mesh(new THREE.ConeGeometry(.010, .025 * lengthScale, 3), teal, airframe, [0, .077 * lengthScale, .014])
   heading.rotation.y = Math.PI / 2
-  const gimbal = mesh(new THREE.SphereGeometry(.010, 16, 12), carbon, airframe, [0, .042, -.017])
+  const gimbal = mesh(new THREE.SphereGeometry(.010, 16, 12), carbon, airframe, [0, .042 * lengthScale, -.017])
   cylinder(.004, .007, material(0x86cdd2, { metalness: .8, roughness: .12 }), gimbal, [0, 0, -.006])
 
   const corners = [[-x, y], [x, y], [x, -y], [-x, -y]]
@@ -78,7 +86,7 @@ export function createDroneModel() {
     rotor.position.z = .015
     mount.add(rotor)
     rotorBlades.push(rotor)
-    const blade = mesh(new THREE.BoxGeometry(.128, .010, .002), material(colors[index], { transparent: true, opacity: .82 }), rotor)
+    const blade = mesh(new THREE.BoxGeometry(.128 * propellerScale, .010 * propellerScale, .002), material(colors[index], { transparent: true, opacity: .82 }), rotor)
     blade.rotation.z = index % 2 ? .6 : -.6
     const disc = mesh(new THREE.CircleGeometry(propellerRadius, 64), new THREE.MeshBasicMaterial({
       color: colors[index], transparent: true, opacity: .12, side: THREE.DoubleSide, depthWrite: false,
@@ -87,9 +95,9 @@ export function createDroneModel() {
     cylinder(.005, .004, body, rotor, [0, 0, .002])
   })
   for (const legX of [-.020, .020]) {
-    beam([legX, .035, -.006], [legX, .040, -.035], .0025, carbon, airframe)
-    beam([legX, -.035, -.006], [legX, -.040, -.035], .0025, carbon, airframe)
-    beam([legX, -.053, -.035], [legX, .053, -.035], .0025, carbon, airframe)
+    beam([legX, .035 * lengthScale, -.006], [legX, .040 * lengthScale, -.035], .0025, carbon, airframe)
+    beam([legX, -.035 * lengthScale, -.006], [legX, -.040 * lengthScale, -.035], .0025, carbon, airframe)
+    beam([legX, -.053 * lengthScale, -.035], [legX, .053 * lengthScale, -.035], .0025, carbon, airframe)
   }
   drone.traverse(object => object.layers.enable(1))
   const bodyMeshes = []
@@ -100,7 +108,7 @@ export function createDroneModel() {
     }
     bodyMeshes.push(object)
   })
-  return { drone, airframe, rotorMounts, rotorBlades, bodyMeshes }
+  return { drone, airframe, rotorMounts, rotorBlades, bodyMeshes, dimensions: modelDimensions }
 }
 
 const orientation = new THREE.Euler(0, 0, 0, 'ZYX')
@@ -120,6 +128,7 @@ export function applyDronePose(rig, sample, headingOffsetRad = 0) {
 const vertex = new THREE.Vector3(), center = new THREE.Vector3(), radiusX = new THREE.Vector3(), radiusY = new THREE.Vector3(), radiusZ = new THREE.Vector3()
 const meshBounds = new THREE.Box3()
 export function sweptAircraftBounds(rig, target = new THREE.Box3()) {
+  const propellerRadius = (rig.dimensions ?? DRONE_DIMENSIONS).propellerRadius
   rig.drone.updateMatrixWorld(true)
   target.makeEmpty()
   for (const part of rig.bodyMeshes) {
@@ -130,8 +139,8 @@ export function sweptAircraftBounds(rig, target = new THREE.Box3()) {
   for (const rotor of rig.rotorBlades) {
     const elements = rotor.matrixWorld.elements
     center.setFromMatrixPosition(rotor.matrixWorld)
-    radiusX.set(elements[0], elements[1], elements[2]).multiplyScalar(DRONE_DIMENSIONS.propellerRadius)
-    radiusY.set(elements[4], elements[5], elements[6]).multiplyScalar(DRONE_DIMENSIONS.propellerRadius)
+    radiusX.set(elements[0], elements[1], elements[2]).multiplyScalar(propellerRadius)
+    radiusY.set(elements[4], elements[5], elements[6]).multiplyScalar(propellerRadius)
     radiusZ.set(elements[8], elements[9], elements[10]).multiplyScalar(.004)
     for (const sign of [-1, 1]) {
       vertex.set(
