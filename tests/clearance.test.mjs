@@ -7,6 +7,7 @@ import { sampleAt } from '../src/lib/data.js'
 
 const recording = JSON.parse(readFileSync(new URL('../public/data/recorded.json', import.meta.url), 'utf8'))
 const { samples } = recording
+const { headingOffsetRad } = recording.metadata.scene
 const emptyPose = { x: 0, y: 0, z: 0, roll: 0, pitch: 0, yaw: 0, tilt: 0 }
 const overlapsWallsLongitudinally = box => box.max.y >= PASSAGE.startY && box.min.y <= PASSAGE.endY && box.max.z >= 0 && box.min.z <= PASSAGE.height
 const clearances = box => ({ left: box.min.x - PASSAGE.left, right: PASSAGE.right - box.max.x })
@@ -45,7 +46,7 @@ test('every recorded and interpolated transit frame clears both walls with full 
   // Match the actual renderer interpolation, with a dense 2 ms grid over all 40 s.
   for (let tick = 0; tick <= 20000; tick++) {
     const time = tick / 500
-    applyDronePose(rig, sampleAt(samples, time))
+    applyDronePose(rig, sampleAt(samples, time), headingOffsetRad)
     sweptAircraftBounds(rig, box)
     if (!overlapsWallsLongitudinally(box)) continue
     checked++
@@ -61,7 +62,7 @@ test('every recorded and interpolated transit frame clears both walls with full 
 
 test('the screenshot pose at 18.79s clears the walls even as the propellers rotate', () => {
   const rig = createDroneModel(), envelope = new THREE.Box3(), actual = new THREE.Box3()
-  applyDronePose(rig, sampleAt(samples, 18.79))
+  applyDronePose(rig, sampleAt(samples, 18.79), headingOffsetRad)
   sweptAircraftBounds(rig, envelope)
   assert.ok(envelope.min.x > .825 && envelope.max.x < 1.175)
   for (let phase = 0; phase < 72; phase++) {
@@ -78,7 +79,7 @@ test('oversized geometry is detected instead of silently moving the walls or the
   const rig = createDroneModel()
   rig.drone.scale.setScalar(3)
   const sample = sampleAt(samples, 18.79), original = { ...sample }
-  applyDronePose(rig, sample)
+  applyDronePose(rig, sample, headingOffsetRad)
   const box = sweptAircraftBounds(rig)
   assert.ok(box.min.x < PASSAGE.left && box.max.x > PASSAGE.right)
   assert.deepEqual(sample, original)

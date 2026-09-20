@@ -26,6 +26,8 @@ export function validateDataset(input) {
   })
   const metadata = { ...input.metadata, title: String(input.metadata.title || '导入的实验记录'), angleUnit: 'rad', positionUnit: 'm', timeUnit: 's' }
   if (metadata.scene !== undefined) {
+    const headingOffsetRad = metadata.scene?.headingOffsetRad
+    if (headingOffsetRad !== undefined && (typeof headingOffsetRad !== 'number' || !Number.isFinite(headingOffsetRad) || Math.abs(headingOffsetRad) > Math.PI)) throw new Error('显示航向校准 headingOffsetRad 必须是 −π 到 π 之间的弧度数值。')
     const passage = metadata.scene?.passage
     if (!passage || !['left', 'right', 'thickness', 'startY', 'endY', 'height'].every(k => typeof passage[k] === 'number' && Number.isFinite(passage[k]))) throw new Error('场景 passage 必须包含有效的墙体尺寸。')
     if (passage.right - passage.left < .05 || passage.right - passage.left > 10 || passage.thickness <= 0 || passage.thickness > 1 || passage.endY <= passage.startY || passage.endY - passage.startY > 1000 || passage.height <= 0 || passage.height > 1000 || Math.max(Math.abs(passage.left), Math.abs(passage.right), Math.abs(passage.startY), Math.abs(passage.endY)) > 10000) throw new Error('场景墙体尺寸超出显示范围。')

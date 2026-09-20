@@ -132,6 +132,8 @@ h1 { font-size: 29px; line-height: 1.45; font-weight: 500; letter-spacing: -.8px
 .subtle-tag { display: inline-flex; align-items: center; font-size: 9px; font-weight: 400; color: #888e7b; padding: 4px 8px; border-radius: 12px; background: #f2f4ec; letter-spacing: .1px; }
 .flight-panel .subtle-tag { color: #7c7850; background: #faf4d7; margin-left: 3px; }
 .scene-actions { display: flex; align-items: center; gap: 6px; }
+.camera-switch { flex-shrink: 0; }
+.camera-switch button { white-space: nowrap; }
 .segmented { display: flex; gap: 1px; padding: 3px; border-radius: 20px; background: #f0f2e9; }
 .segmented button { border: 0; border-radius: 17px; padding: 6px 10px; font-size: 10px; background: transparent; color: #8d9580; }
 .segmented button.selected { background: #3b4132; color: #f4f6ef; }
@@ -354,6 +356,8 @@ main:not(.workspace-page) > .page-footer { padding-top: 23px; }
   .panel-title h2 { font-size: 12px; }
   .panel-title > svg { width: 15px; }
   .scene-actions { gap: 2px; }
+  .flight-panel > .panel-heading { flex-wrap: wrap; padding-top: 12px; padding-bottom: 12px; gap: 8px; }
+  .flight-panel .scene-actions { width: 100%; justify-content: flex-end; }
   .segmented button { font-size: 9px; padding: 5px 6px; }
   .scene-actions .icon-button { width: 23px; }
   .scene-container { height: 355px; margin: 0 7px; border-radius: 12px; }

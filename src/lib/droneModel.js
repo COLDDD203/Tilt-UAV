@@ -104,10 +104,13 @@ export function createDroneModel() {
 }
 
 const orientation = new THREE.Euler(0, 0, 0, 'ZYX')
-export function applyDronePose(rig, sample) {
+export function applyDronePose(rig, sample, headingOffsetRad = 0) {
   rig.drone.position.set(sample.x, sample.y, sample.z)
-  orientation.set(sample.roll, sample.pitch, sample.yaw, 'ZYX')
+  // An explicit scene calibration may align a recorded heading with the passage.
+  // It changes only the display reference; measured angles remain untouched.
+  orientation.set(sample.roll, sample.pitch, sample.yaw + headingOffsetRad, 'ZYX')
   rig.drone.quaternion.setFromEuler(orientation)
+  // Nose is local +Y, right is +X: positive beta banks RIGHT, never nose-down.
   rig.airframe.rotation.y = sample.tilt
   rig.rotorMounts.forEach(mount => { mount.rotation.y = -sample.tilt })
 }

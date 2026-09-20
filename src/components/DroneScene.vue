@@ -16,6 +16,7 @@ const props = defineProps({
   fitKey: { type: Number, default: 0 },
   passage: { type: Object, default: () => ({ ...PASSAGE }) },
   hoverTarget: { type: Object, default: null },
+  headingOffsetRad: { type: Number, default: 0 },
 })
 const emit = defineEmits(['ready'])
 const host = ref(null)
@@ -38,7 +39,11 @@ let lastFrame = 0, contextLost = false
 let viewportWidth = 1, viewportHeight = 1, detailRect = null
 let rotorBlades = []
 const worldZ = new THREE.Vector3(0, 0, 1)
-const detailOffset = new THREE.Vector3(1.1, -1.5, .95).normalize().multiplyScalar(.60)
+// Follow the calibrated heading from behind, with world-up fixed: banking is
+// unambiguously left/right even when the main camera is orbited independently.
+const detailOffset = new THREE.Vector3(0, -.60, .22)
+const detailHeading = new THREE.Quaternion()
+const rotatedDetailOffset = new THREE.Vector3()
 const detailBackground = new THREE.Color(0xfaf9f4)
 const palette = { sage: 0x758765, ink: 0x30312c, grid: 0xdeded2, orange: 0xc59f39 }
 
@@ -270,7 +275,7 @@ function updateSample() {
   applyDronePose(rig, {
     x: finite(sample.x), y: finite(sample.y), z: finite(sample.z),
     roll: finite(sample.roll), pitch: finite(sample.pitch), yaw: finite(sample.yaw), tilt: finite(sample.tilt),
-  })
+  }, props.headingOffsetRad)
   shadow.position.x = drone.position.x
   shadow.position.y = drone.position.y
   shadow.material.opacity = Math.max(.15, .75 - Math.max(0, drone.position.z) * .1)
@@ -301,6 +306,8 @@ function fitCamera() {
   const verticalFov = THREE.MathUtils.degToRad(camera.fov)
   const direction = props.cameraMode === 'top'
     ? new THREE.Vector3(0, -.001, 1)
+    : props.cameraMode === 'rear'
+      ? new THREE.Vector3(0, -1, .10)
     : props.cameraMode === 'side'
       ? new THREE.Vector3(1, -.06, .05)
       : new THREE.Vector3(1.15, -1.5, 1.12)
@@ -373,7 +380,9 @@ function animate(now) {
   renderer.render(scene, camera)
   if (detailRect && props.sample && !failure.value) {
     const { x, y, width, height } = detailRect
-    detailCamera.position.copy(drone.position).add(detailOffset)
+    detailHeading.setFromAxisAngle(worldZ, finite(props.sample.yaw) + props.headingOffsetRad)
+    rotatedDetailOffset.copy(detailOffset).applyQuaternion(detailHeading)
+    detailCamera.position.copy(drone.position).add(rotatedDetailOffset)
     detailCamera.lookAt(drone.position)
     const originalBackground = scene.background
     scene.background = detailBackground
@@ -399,6 +408,7 @@ function onContextRestored() {
 }
 
 watch(() => props.sample, updateSample)
+watch(() => props.headingOffsetRad, updateSample)
 watch(() => props.samples, rebuildPaths)
 watch(() => props.showTrail, value => { if (pathGroup) pathGroup.visible = value })
 watch(() => props.showReference, value => { if (referenceLine) referenceLine.visible = value })
@@ -473,7 +483,7 @@ onBeforeUnmount(() => {
     </div>
     <div v-if="!failure" class="viewport-hint">拖动旋转 <span>·</span> 滚轮缩放</div>
     <div v-show="sample && !failure" class="drone-detail" aria-label="无人机倾转姿态近景">
-      <div class="drone-detail-heading"><span>倾转细节</span><span class="drone-detail-angle">β <b>{{ tiltText }}</b></span></div>
+      <div class="drone-detail-heading"><span>侧倾 · 后视</span><span class="drone-detail-angle">β <b>{{ tiltText }}</b></span></div>
       <div ref="detailHost" class="drone-detail-canvas" />
     </div>
     <div v-if="failure" class="viewport-message" role="status">
@@ -490,7 +500,7 @@ onBeforeUnmount(() => {
       <div class="viewport-coordinates">
         <span v-for="(axis, index) in ['X', 'Y', 'Z']" :key="axis"><i>{{ axis }}</i>{{ positionText[index] }}</span>
       </div>
-      <span class="viewport-model-note">机体与旋翼为示意模型</span>
+      <span class="viewport-model-note">{{ headingOffsetRad ? '穿缝示意 · 航向已对齐通道' : '机体与旋翼为示意模型' }}</span>
     </div>
   </div>
 </template>

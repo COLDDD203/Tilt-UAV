@@ -37,6 +37,30 @@ test('older recordings need no scene or stages, and a wall scene needs no hover 
   assert.doesNotThrow(() => validateDataset(dataset({ stages: stages() })))
 })
 
+test('explicit display heading calibration survives export without changing source angles', () => {
+  const customScene = { ...scene(), headingOffsetRad: -Math.PI / 3 }
+  const input = dataset({ angleUnit: 'deg', scene: customScene }, [
+    { ...sample(10), yaw: 60, tilt: 30 }, { ...sample(40), yaw: 62, tilt: 45 },
+  ])
+  const original = structuredClone(input)
+  const normalized = validateDataset(input)
+  const roundtrip = validateDataset(JSON.parse(JSON.stringify(normalized)))
+  assert.deepEqual(input, original)
+  assert.deepEqual(roundtrip, normalized)
+  assert.equal(roundtrip.metadata.scene.headingOffsetRad, -Math.PI / 3, 'Scene offset is always radians, independent of sample units')
+  assert.ok(Math.abs(roundtrip.samples[0].yaw - Math.PI / 3) < 1e-12)
+  assert.equal(validateDataset(dataset()).metadata.scene, undefined, 'Ordinary imports must not acquire display calibration')
+})
+
+test('malformed heading calibration is rejected before reaching the renderer', () => {
+  for (const headingOffsetRad of [null, false, '', '-1', NaN, Infinity, -Infinity, Math.PI + .01, -Math.PI - .01]) {
+    assert.throws(() => validateDataset(dataset({ scene: { ...scene(), headingOffsetRad } })))
+  }
+  for (const headingOffsetRad of [-Math.PI, 0, Math.PI]) {
+    assert.doesNotThrow(() => validateDataset(dataset({ scene: { ...scene(), headingOffsetRad } })))
+  }
+})
+
 test('incomplete scenes and nonfinite or nonnumeric wall dimensions are refused', () => {
   for (const invalidScene of [null, false, 'walls', [], {}, { passage: null }, { passage: {} }]) {
     assert.throws(() => validateDataset(dataset({ scene: invalidScene })), `Invalid scene ${JSON.stringify(invalidScene)}`)
