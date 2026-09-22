@@ -63,7 +63,7 @@ h1, h2, h3, p { margin: 0; }
 .nav-item:hover { background: #373b32; color: #fff; }
 .nav-item.active { background: transparent; color: #5ed4c0; font-weight: 650; }
 .nav-item.active::after { content: ''; position: absolute; top: 10px; right: 0; width: 3px; height: 26px; border-radius: 3px 0 0 3px; background: #54d7c2; }
-.nav-item.active > svg:not(.nav-arrow) { width: 27px; height: 27px; padding: 5px; border-radius: 7px; background: #31504d; color: #71e1ce; }
+.nav-item.active > svg:not(.nav-arrow) { width: 27px; height: 27px; padding: 5px; border-radius: 7px; background: #000; color: #71e1ce; }
 .nav-item.active:hover { background: #303a34; }
 .nav-item.active .nav-arrow { color: #7ce3d2; }
 .nav-arrow { margin-left: auto; }
